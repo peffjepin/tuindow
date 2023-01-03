@@ -11,11 +11,9 @@ $(VENV):
 $(PYTHON): $(VENV)
 
 test: $(PYTHON)
-	$(PYTHON) -m pip install -e ".[dev]"
 	$(PYTHON) -m pytest
 
 type_check: $(PYTHON)
-	$(PYTHON) -m pip install -e ".[dev]"
 	$(PYTHON) -m mypy tuindow
 
 test_all: type_check test
