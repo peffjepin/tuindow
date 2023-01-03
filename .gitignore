@@ -1,0 +1,7 @@
+.local
+makevenv
+.mypy_cache
+__pycache__
+.pytest_cache
+tuindow.egg-info
+venv
