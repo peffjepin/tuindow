@@ -159,10 +159,10 @@ def _aabb_collides(b1: AABB, b2: AABB):
         b1 bottom <= b2 top
     """
     return (
-        b1.left < b2.left + b2.width and
-        b1.top < b2.top + b2.height and
-        b1.left + b1.width > b2.left and
-        b1.top + b1.height > b2.top
+        b1.left < b2.left + b2.width
+        and b1.top < b2.top + b2.height
+        and b1.left + b1.width > b2.left
+        and b1.top + b1.height > b2.top
     )
 
 
@@ -219,14 +219,18 @@ class Window:
 
     def _check_panel_collisions(self, panel: buffers.Panel) -> None:
         box = AABB(panel.x, panel.y, panel.width, panel.height)
-        if any(_aabb_collides(box, edge_box) for edge_box in self._aabb_boundaries):
+        if any(
+            _aabb_collides(box, edge_box) for edge_box in self._aabb_boundaries
+        ):
             raise WindowError(
                 "Trying to create out of bounds panel: "
                 f"{panel=!r}, window={self!r}"
             )
 
-        collisions_with_existing = [_aabb_collides(
-            box, AABB(p.x, p.y, p.width, p.height)) for p in self._user_panels]
+        collisions_with_existing = [
+            _aabb_collides(box, AABB(p.x, p.y, p.width, p.height))
+            for p in self._user_panels
+        ]
         if any(collisions_with_existing):
             error = f"Panel collision detected: {panel=!r} collides with"
             for i, collides in enumerate(collisions_with_existing):
@@ -244,8 +248,8 @@ class Window:
     @property
     def _aabb_boundaries(self) -> Tuple[AABB, AABB, AABB, AABB]:
         return (
-            AABB(-1,  0, 1, self.height),         # left
-            AABB(0, -1, self.width, 1),           # top
+            AABB(-1, 0, 1, self.height),  # left
+            AABB(0, -1, self.width, 1),  # top
             AABB(self.width, 0, 1, self.height),  # right
             AABB(0, self.height, self.width, 1),  # bottom
         )
