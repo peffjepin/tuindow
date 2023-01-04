@@ -16,6 +16,13 @@ from tuindow import Line
     (Line(5, data="ab", padding=(1, 1)), " ab  "),
     (Line(5, data="abc", padding=(1, 1), padding_fill="."), ".abc."),
     (Line(5, data="ab", padding=(1, 1), padding_fill="!", fill="?"), "!ab?!"),
+    (Line(5, data="ab", padding=(1, 1), padding_fill=("!", ".")), "!ab ."),
+    (Line(5, data="abc", padding=1), " abc "),
+    (Line(5, data="a", padding=(-1, 1)), "   a "),
+    (Line(5, data="a", padding=-1), "  a  "),
+    (Line(5, data="a", padding=(-1, -3)), " a   "),
+    (Line(5, data="ab", padding=(-1, -1)), "  ab "),
+    (Line(5, data="a", padding=-1, padding_fill="!", fill="."), "!!a!!"),
 )
 def test_display(line, expected):
     assert line.display == expected
@@ -71,9 +78,9 @@ def test_fill_must_be_length_1(expect_error, fill):
         Line(10, fill=fill)
 
 
-@params("fill", "", "--")
+@params("fill", "", "--", ("", " "), (" ", ""))
 def test_padding_fill_must_be_length_1(expect_error, fill):
-    with expect_error(ValueError, "fill", "length 1", fill):
+    with expect_error(ValueError, "fill", "length 1", repr(fill)):
         Line(10, padding_fill=fill)
 
 

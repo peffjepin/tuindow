@@ -9,7 +9,7 @@ def params(names, *values):
 @pytest.fixture
 def expect_error() -> None:
     @contextlib.contextmanager
-    def inner(error_type: type, *present_in_message: str) -> None:
+    def inner(error_type: type, *present_in_message: str):
         with pytest.raises(error_type) as excinfo:
             yield
         for expected in present_in_message:
