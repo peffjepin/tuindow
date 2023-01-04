@@ -1,6 +1,7 @@
 from typing import List
 from typing import Iterator
 from typing import Tuple
+from typing import Optional
 
 
 class Line:
@@ -10,16 +11,41 @@ class Line:
     _length: int
     _display_capacity: int
     _fill: str
-    _padding: Tuple[int, int]
+    _padding: Tuple[int, int] = (0, 0)
+    _padding_fill: Optional[str]
     _left_pad: str = ""
     _right_pad: str = ""
 
-    def __init__(self, length: int, data="", fill=" ", padding=(0, 0)) -> None:
+    def __init__(self,
+                 length: int,
+                 data="",
+                 fill=" ",
+                 padding=(0, 0),
+                 padding_fill=None,
+                 ) -> None:
         self.fill = fill
+        self.padding_fill = padding_fill
         self.length = length
         self.data = data
         self.dirty = True
         self.padding = padding
+
+    @property
+    def padding_fill(self) -> str:
+        if not self._padding_fill:
+            return self.fill
+        return self._padding_fill
+
+    @padding_fill.setter
+    def padding_fill(self, value: Optional[str]) -> None:
+        if value is not None and len(value) != 1:
+            raise ValueError(
+                f"Line padding_fill ({value=!r}) must be a string of length 1")
+        self._padding_fill = value
+        if self._padding_fill:
+            self._left_pad = self.padding_fill*self.padding[0]
+            self._right_pad = self.padding_fill*self.padding[1]
+        self.dirty = True
 
     @property
     def padding(self) -> Tuple[int, int]:
@@ -35,10 +61,10 @@ class Line:
         self._left_pad = ""
         self._right_pad = ""
         if value[0] >= 0:
-            self._left_pad = self.fill*value[0]
+            self._left_pad = self.padding_fill*value[0]
             self._display_capacity -= value[0]
         if value[1] >= 0:
-            self._right_pad = self.fill*value[1]
+            self._right_pad = self.padding_fill*value[1]
             self._display_capacity -= value[1]
         self._padding = value
         self.dirty = True
