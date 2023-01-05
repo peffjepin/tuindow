@@ -4,6 +4,7 @@ from typing import Tuple
 from typing import Optional
 from typing import Union
 from typing import Any
+from typing import Protocol
 
 
 class _Validation:
@@ -145,19 +146,42 @@ class _Padding:
         return sum(map(len, self._pads))
 
 
-class Line:
-    dirty: bool
+# Immutable primatives can be used plainly as Line data
+# because the line can itself track when it's data attribute
+# is modified and update it's dirty flag internally.
+#
+# Immutability is not enough on it's own:
+#   consider the case of the tuple ([], [])
+#   The internal lists could be updated and the line has
+#   no way of knowing that it must be redrawn
+LineDataPrimitive = Union[str, int, float, bool]
 
-    _data: str
+
+# If you need something more robust than the available primitives
+# you can implement this protocol. The protocol implementation
+# should set its `dirty` flag to True when the implementation wants
+# the window to redraw the line. The window will clear the dirty flag
+# after it redraws the line.
+class LineDataProtocol(Protocol):
+    dirty: bool
+    def __str__(self) -> str: ...
+
+
+LineData = Union[LineDataPrimitive, LineDataProtocol]
+
+
+class Line:
+    _dirty: bool = True
+    _data: LineData = ""
+    _fill: str = " "
     _length: int
-    _fill: str
     _padding: _Padding
 
     def __init__(
         self,
         length: int,
-        data="",
-        fill=" ",
+        data: LineData = "",
+        fill: str = " ",
         padding: Union[int, Tuple[int, int]] = (0, 0),
         padding_fill: Optional[Union[str, Tuple[str, str]]] = None,
     ) -> None:
@@ -168,8 +192,6 @@ class Line:
         # overflow which would be a slightly inaccurate error message
         _Validation.greater_than_x("Line length", length, 0)
 
-        self.fill = fill
-
         if padding_fill is None:
             padding_fill = (fill, fill)
         elif isinstance(padding_fill, str):
@@ -179,9 +201,9 @@ class Line:
         self._padding = _Padding(padding, padding_fill, length)
 
         self.length = length
-        self.data = data
+        self.fill = fill
         self.dirty = True
-        self.padding = padding
+        self.data = data
 
     @property
     def padding_fill(self) -> Tuple[str, str]:
@@ -219,13 +241,25 @@ class Line:
         self.dirty = True
 
     @property
-    def data(self) -> str:
+    def data(self) -> LineData:
         return self._data
 
     @data.setter
-    def data(self, value: str) -> None:
+    def data(self, value: LineData) -> None:
         self._data = value
         self.dirty = True
+
+    @property
+    def dirty(self) -> bool:
+        return self._dirty or getattr(self._data, "dirty", False)
+
+    @dirty.setter
+    def dirty(self, value: bool) -> None:
+        self._dirty = value
+        try:
+            setattr(self._data, "dirty", value)
+        except AttributeError:
+            pass
 
     @property
     def length(self) -> int:

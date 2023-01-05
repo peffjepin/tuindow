@@ -44,13 +44,6 @@ def test_dirty_on_state_change(attr, value):
     assert ln.dirty
 
 
-def test_data_is_anything_that_implements_str():
-    class Data:
-        def __str__(self):
-            return "txt"
-    assert Line(3, data=Data()).display == "txt"
-
-
 @params("length", 0, -1)
 def test_length_less_than_1(expect_error, length):
     with expect_error(ValueError, "length", "greater than 0"):
@@ -113,3 +106,53 @@ def test_insufficient_padding_space_error_when_line_length_changed(expect_error)
 
     with expect_error(ValueError, "padding", "length", repr(2), repr((1, 2))):
         ln.length = 2
+
+
+def test_data_is_anything_that_implements_str():
+    class Data:
+        def __str__(self):
+            return "txt"
+    assert Line(3, data=Data()).display == "txt"
+
+
+@params(
+    "data1,data2",
+    (1, 2),
+    ("", " "),
+    (True, False),
+    (1.0, 2.0),
+)
+def test_line_data_primitives(data1, data2):
+    ln = Line(10, data=data1)
+    assert ln.dirty
+    assert str(data1) in ln.display
+    ln.dirty = False
+
+    ln.data = data2
+    assert ln.dirty
+    assert str(data2) in ln.display
+
+
+def test_line_data_protocol():
+    class MyData:
+        dirty = False
+
+        def __str__(self):
+            return "hello"
+
+    data = MyData()
+    assert not data.dirty
+
+    # The window has yet to draw this line, and so it should still
+    # be flagged dirty despite the implementation dirty flag currently being False
+    ln = Line(10, data=data)
+    assert ln.dirty
+    ln.dirty = False
+    assert not ln.dirty
+    assert "hello" in ln.display
+
+    # without touching the line we should be able to enable the dirty flag
+    # with our data implementation
+    data.dirty = True
+    assert ln.dirty
+    assert "hello" in ln.display
