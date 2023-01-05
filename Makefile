@@ -15,6 +15,7 @@ test: $(PYTHON)
 
 type_check: $(PYTHON)
 	$(PYTHON) -m mypy tuindow
+	$(PYTHON) -m mypy test
 
 test_all: type_check test
 
