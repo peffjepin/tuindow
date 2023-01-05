@@ -139,7 +139,7 @@ class CursesInput:
             raise StopIteration
         elif curses_ch == curses.KEY_RESIZE:
             self._resize_callback()
-            return self._get_key()
+            return next(self)
         return _curses_key_map.get(curses_ch, chr(curses_ch))
 
 
@@ -186,6 +186,7 @@ class Window:
         self._stdscr.nodelay(True)
         curses.noecho()
         curses.cbreak()
+        curses.curs_set(0)
         self._stdscr.clear()
         self._stdscr.refresh()
 
@@ -295,8 +296,12 @@ class Window:
                 # clear user input before drawing in case
                 # we need to react to a resize key event
                 self._input.cache_pending_keys()
-                self._stdscr.insstr(y, x, line.display)
+                self._stdscr.addstr(y, x, line.display)
             except curses.error:
+                if x + line.length == self.width and y == self.height-1:
+                    # writing the last character in the window causes an error
+                    # because it places the cursor out of bounds
+                    return
                 raise WindowError(
                     f"failed to draw line (length={line.length}): "
                     f"{line.display!r} at {x=}, {y=} on {self!r}"
