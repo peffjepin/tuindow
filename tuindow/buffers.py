@@ -3,6 +3,44 @@ from typing import Iterator
 from typing import Tuple
 from typing import Optional
 from typing import Union
+from typing import Any
+
+
+class _Validation:
+    @classmethod
+    def _error(
+        cls, value_description: str, value: Any, error_reason: str
+    ) -> None:
+        raise ValueError(f"{value_description} ({value=!r}) {error_reason}")
+
+    @classmethod
+    def not_negative(cls, desc: str, value: Union[int, float]) -> None:
+        if value < 0:
+            cls._error(desc, value, "cannot be negative")
+
+    @classmethod
+    def greater_than_x(
+        cls, desc: str, value: Union[int, float], x: Union[int, float]
+    ) -> None:
+        if not value > x:
+            cls._error(desc, value, f"must be greater than {x!r}")
+
+    @classmethod
+    def padding_overflow(cls, value: Tuple[int, int], length: int) -> None:
+        if sum(v for v in value if v > 0) >= length:
+            cls._error("padding", value, f"cannot consume entire {length=}")
+
+    @classmethod
+    def padding_fill(cls, value: Tuple[str, str]) -> None:
+        if any(len(v) != 1 for v in value):
+            cls._error(
+                "padding_fill values", value, "must be strings of length 1"
+            )
+
+    @classmethod
+    def length_one_string(cls, desc: str, value: str) -> None:
+        if len(value) != 1:
+            cls._error(desc, value, "must be a string of length 1")
 
 
 class _Padding:
@@ -20,10 +58,7 @@ class _Padding:
         self.fill = fill
 
     def validate_max_length(self, max_length: int) -> None:
-        if sum(map(len, self._pads)) >= max_length:
-            raise ValueError(
-                f"Line padding (value={self._value!r}) exceeded length ({max_length!r})"
-            )
+        _Validation.padding_overflow(self.value, max_length)
 
     def pad_string(
         self, string: str, max_length: int, regular_fill: str
@@ -85,11 +120,7 @@ class _Padding:
         return self._value
 
     def set_value(self, value: Tuple[int, int], max_length: int) -> None:
-        if sum(v for v in value if v > 0) >= max_length:
-            raise ValueError(
-                f"Line padding ({value=!r}) exceeded length ({max_length!r})"
-            )
-
+        _Validation.padding_overflow(value, max_length)
         self._value = value
         self._pads = (
             self.value[0] * self.fill[0] if self.value[0] >= 0 else "",
@@ -102,11 +133,7 @@ class _Padding:
 
     @fill.setter
     def fill(self, value: Tuple[str, str]) -> None:
-        if any(len(v) != 1 for v in value):
-            raise ValueError(
-                f"Padding fill values ({value=!r}) must be strings of length 1"
-            )
-
+        _Validation.padding_fill(value)
         self._fill = value
         self._pads = (
             self.value[0] * self.fill[0] if self.value[0] >= 0 else "",
@@ -135,11 +162,11 @@ class Line:
         padding_fill: Optional[Union[str, Tuple[str, str]]] = None,
     ) -> None:
 
-        if length < 1:
-            # catch this error here even though the property can also catch it.
-            # since length and padding are dependent on one another so
-            # initialization order can cause a less than ideal error message
-            raise ValueError("Line {length=!r} must be greater than 0")
+        # self.value property catches this, but requires self.padding
+        # to be initialized. Without this check here, the error message
+        # for initializing with an invalid length would indicate a padding
+        # overflow which would be a slightly inaccurate error message
+        _Validation.greater_than_x("Line length", length, 0)
 
         self.fill = fill
 
@@ -187,10 +214,7 @@ class Line:
 
     @fill.setter
     def fill(self, value: str) -> None:
-        if len(value) != 1:
-            raise ValueError(
-                f"Line fill ({value=!r}) must be a string of length 1"
-            )
+        _Validation.length_one_string("Line fill", value)
         self._fill = value
         self.dirty = True
 
@@ -209,8 +233,7 @@ class Line:
 
     @length.setter
     def length(self, value: int) -> None:
-        if value < 1:
-            raise ValueError(f"Line length ({value=}) must be greater than 0")
+        _Validation.greater_than_x("Line length", value, 0)
         self._padding.validate_max_length(value)
         self._length = value
         self.dirty = True
@@ -252,8 +275,7 @@ class Panel:
 
     @x.setter
     def x(self, value: int) -> None:
-        if value < 0:
-            raise ValueError(f"Panel x ({value=}) cannot be negative")
+        _Validation.not_negative("Panel x", value)
         self._x = value
 
     @property
@@ -262,8 +284,7 @@ class Panel:
 
     @y.setter
     def y(self, value: int) -> None:
-        if value < 0:
-            raise ValueError(f"Panel y ({value=}) cannot be negative")
+        _Validation.not_negative("Panel y", value)
         self._y = value
 
     @property
@@ -272,8 +293,7 @@ class Panel:
 
     @width.setter
     def width(self, value: int) -> None:
-        if value < 1:
-            raise ValueError(f"Panel width ({value=}) must be greater than 0")
+        _Validation.greater_than_x("Panel width", value, 0)
         if value != self._width and self.lines:
             for line in self.lines:
                 line.length = value
@@ -285,8 +305,7 @@ class Panel:
 
     @height.setter
     def height(self, value: int) -> None:
-        if value < 1:
-            raise ValueError(f"Panel height ({value=}) must be greater than 0")
+        _Validation.greater_than_x("Panel height", value, 0)
         if value > self._height:
             while value > len(self.lines):
                 self.lines.append(Line(self.width))

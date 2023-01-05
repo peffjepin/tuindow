@@ -106,3 +106,10 @@ def test_pads_updated_when_padding_fill_updated():
 
     ln.padding_fill = "."
     assert ln.display == ". .."
+
+
+def test_insufficient_padding_space_error_when_line_length_changed(expect_error):
+    ln = Line(4, padding=(1, 2))
+
+    with expect_error(ValueError, "padding", "length", repr(2), repr((1, 2))):
+        ln.length = 2
