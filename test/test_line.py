@@ -101,6 +101,18 @@ def test_pads_updated_when_padding_fill_updated():
     assert ln.display == ". .."
 
 
+def test_scalar_padding_on_init():
+    assert Line(4, padding=1, data="ab").display == " ab "
+
+
+def test_scalar_padding_modification():
+    line = Line(4, data="ab")
+    assert line.display == "ab  "
+
+    line.padding = 1
+    assert line.display == " ab "
+
+
 def test_insufficient_padding_space_error_when_line_length_changed(expect_error):
     ln = Line(4, padding=(1, 2))
 

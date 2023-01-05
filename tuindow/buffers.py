@@ -226,7 +226,9 @@ class Line:
         return self._padding.value
 
     @padding.setter
-    def padding(self, value: Tuple[int, int]) -> None:
+    def padding(self, value: Union[int, Tuple[int, int]]) -> None:
+        if isinstance(value, int):
+            value = (value, value)
         self._padding.set_value(value, self.length)
         self.dirty = True
 
