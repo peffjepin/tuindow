@@ -48,8 +48,6 @@ class UserInput:
 def main():
     with Window() as window:
         user_input = UserInput()
-        lines = 0
-
         window.left_panel.styleline(0, padding=2)
 
         while 1:
@@ -61,9 +59,11 @@ def main():
                 if key == tuindow.ESCAPE:
                     return 0
                 elif key == "\n":
-                    window.right_panel.styleline(lines, padding=2)
-                    window.right_panel.writeline(lines, user_input.consume())
-                    lines += 1
+                    index = window.right_panel.first_available
+                    if index is not None:
+                        window.right_panel.styleline(index, padding=2)
+                        window.right_panel.writeline(
+                            index, user_input.consume())
                 elif key == tuindow.BACKSPACE:
                     user_input.backspace()
                 else:

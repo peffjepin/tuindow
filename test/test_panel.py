@@ -130,3 +130,101 @@ def test_styleline():
 
     assert panel[0].style == style1
     assert panel[1].style == style2
+
+
+def test_available():
+    panel = Panel(0, 0, 10, 3)
+    assert panel.available == 3
+
+    panel.writeline(1, "abc")
+
+    assert panel.available == 2
+
+
+def test_availability_determined_by_empty_string():
+    panel = Panel(0, 0, 10, 3)
+    assert panel.available == 3
+
+    panel.writeline(0, "abc")
+    assert panel.available == 2
+
+    panel.writeline(1, "")
+    assert panel.available == 2
+
+
+def test_first_available_returns_index():
+    panel = Panel(0, 0, 10, 3)
+    assert panel.first_available == 0
+
+    panel.writeline(0, "abc")
+    panel.writeline(1, "abc")
+    assert panel.first_available == 2
+
+
+def test_first_available_returns_none():
+    panel = Panel(0, 0, 10, 2)
+    assert panel.first_available == 0
+
+    panel.writeline(0, "abc")
+    panel.writeline(1, "abc")
+
+    assert panel.first_available is None
+
+
+def test_available_again_after_clear():
+    panel = Panel(0, 0, 10, 3)
+
+    panel.writeline(0, "abc")
+    assert panel.first_available == 1
+
+    panel.writeline(0, "")
+    assert panel.first_available == 0
+
+
+def test_clearline():
+    panel = Panel(0, 0, 10, 3)
+
+    panel.writeline(0, "abc")
+    assert panel.readline(0) == "abc"
+
+    panel.clearline(0)
+    assert panel.readline(0) == ""
+
+
+def test_first_available_after_clear():
+    panel = Panel(0, 0, 10, 5)
+
+    for i in range(5):
+        panel.writeline(i, "abc")
+
+    panel.clearline(4)
+    panel.clearline(1)
+    panel.clearline(3)
+
+    assert panel.first_available == 1
+    panel.writeline(1, "a")
+    assert panel.first_available == 3
+    panel.writeline(3, "a")
+    assert panel.first_available == 4
+
+
+def test_write_if_available_when_available():
+    panel = Panel(0, 0, 10, 2)
+
+    panel.write_if_available("abc")
+    panel.write_if_available("bcd")
+
+    assert panel.readline(0) == "abc"
+    assert panel.readline(1) == "bcd"
+
+
+def test_write_if_available_when_not_available():
+    panel = Panel(0, 0, 10, 2)
+
+    panel.write_if_available("abc")
+    panel.write_if_available("bcd")
+    # does nothing
+    panel.write_if_available("cde")
+
+    assert panel.readline(0) == "abc"
+    assert panel.readline(1) == "bcd"

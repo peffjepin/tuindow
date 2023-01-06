@@ -16,9 +16,6 @@ class Window(LibraryWindow):
     def height(self):
         return TEST_HEIGHT
 
-    def draw(self, *args, **kwargs):
-        pass
-
     def _init_curses(self, *args, **kwargs):
         pass
 

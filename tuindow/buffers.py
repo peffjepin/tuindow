@@ -173,6 +173,7 @@ class Line:
 
 class Panel:
     dirty: bool = True
+    available: int = -1
     _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
     _lines: Tuple[Line, ...] = ()
 
@@ -199,16 +200,31 @@ class Panel:
         return self.height
 
     def writeline(self, index: int, value: str) -> None:
-        self[index].data = value
+        ln = self[index]
+        if ln.data and not value:
+            self.available += 1
+        elif not ln.data and value:
+            self.available -= 1
+        ln.data = value
 
     def readline(self, index: int) -> str:
         return self[index].data
+
+    def clearline(self, index: int) -> None:
+        self.writeline(index, "")
 
     def styleline(self, index: int, style=None, **kwargs) -> None:
         if style is None:
             self[index].format(**kwargs)
         else:
             self[index].style = style
+
+    def write_if_available(self, value: str) -> None:
+        if not self.available:
+            return
+        index = self.first_available
+        assert index is not None
+        self.writeline(index, value)
 
     def _linegen(
         self, current_lines: Optional[Iterable[Line]] = None
@@ -219,6 +235,13 @@ class Panel:
                 yield ln
         while 1:
             yield Line(self.width)
+
+    @property
+    def first_available(self) -> Optional[int]:
+        for i, ln in enumerate(self):
+            if not ln.data:
+                return i
+        return None
 
     @property
     def rect(self) -> structs.Rect:
@@ -238,6 +261,7 @@ class Panel:
         self._rect = rect
         lines = self._linegen(self._lines)
         self._lines = tuple(next(lines) for _ in range(rect.height))
+        self.available = sum(1 if ln.data == "" else 0 for ln in self)
         self.dirty = True
 
     @property

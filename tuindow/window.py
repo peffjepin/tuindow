@@ -275,7 +275,7 @@ class Window:
                 # so we can consume the resize event and trigger
                 # a window re-layout then try again
                 self._input.cache_pending_keys()
-                self.draw()
+                self._draw()
             else:
                 raise
 
