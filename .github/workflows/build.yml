@@ -10,9 +10,11 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v3
-      - uses: pypa/cibuildwheel@v2.11.4
+      - name: setup environment
+        uses: actions/checkout@v3
+
       - name: build and test wheels
+        uses: pypa/cibuildwheel@v2.11.4
         env:
           CIBW_BUILD: cp*
           CIBW_SKIP: cp37-*
@@ -22,7 +24,8 @@ jobs:
           output-dir: dist
           package-dir: .
 
-      - uses: actions/upload-artifact@v3
+      - name: upload wheels
+        uses: actions/upload-artifact@v3
         with:
           path: ./dist/*.whl
 
@@ -31,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: setup environment
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
@@ -39,6 +43,7 @@ jobs:
       - name: Build and test sdist
         run: make sdist
 
+      - name: upload sdist
       - uses: actions/upload-artifact@v3
         with:
           path: ./dist/*.tar.gz
