@@ -53,7 +53,8 @@ def main():
         window.left_panel.styleline(0, padding=2)
 
         while 1:
-            window.draw()
+            window.update()
+
             window.left_panel.writeline(0, str(user_input))
 
             for key in window.keys:
@@ -67,8 +68,6 @@ def main():
                     user_input.backspace()
                 else:
                     user_input.append(key)
-
-            window.tick()
 
 
 if __name__ == "__main__":

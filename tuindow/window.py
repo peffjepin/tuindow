@@ -258,10 +258,14 @@ class Window:
     def keys(self) -> typing.Iterable[str]:
         return self._input
 
-    def tick(self) -> float:
+    def update(self):
+        self._draw()
+        self._tick()
+
+    def _tick(self) -> float:
         return next(self.clock)
 
-    def draw(self) -> None:
+    def _draw(self) -> None:
         w, h = self.width, self.height
         try:
             self._draw_unsafe()
