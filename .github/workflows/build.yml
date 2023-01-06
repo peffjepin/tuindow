@@ -4,27 +4,21 @@ on: [push, pull_request]
 
 jobs:
   build_wheels:
-    name: Build wheels
+    name: Build wheel
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - name: setup environment
-        uses: actions/checkout@v3
-
-      - name: build and test wheels
-        uses: pypa/cibuildwheel@v2.11.4
-        env:
-          CIBW_BUILD: cp*
-          CIBW_SKIP: cp37-*
-          CIBW_TEST_EXTRAS: dev
-          CIBW_TEST_COMMAND: pytest {project}/tests
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          output-dir: dist
-          package-dir: .
+          python-version: '3.7'
 
-      - name: upload wheels
+      - name: build and test wheel
+        run: make wheel
+
+      - name: upload wheel
         uses: actions/upload-artifact@v3
         with:
           path: ./dist/*.whl

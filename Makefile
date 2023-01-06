@@ -30,5 +30,12 @@ sdist: $(RAWVENV)
 	  $(RAWVENV)/bin/python3 -m pip install dist/*
 	  $(RAWVENV)/bin/python3 -m pytest
 
+wheel: $(RAWVENV)
+	  $(RAWVENV)/bin/python3 -m pip install pytest wheel
+	  $(RAWVENV)/bin/python3 setup.py bdist_wheel
+	  $(RAWVENV)/bin/python3 -m pip install dist/*
+	  $(RAWVENV)/bin/python3 -m pytest
+
+
 clean:
-	-rm -rf $(VENV) $(RAWVENV) dist
+	-rm -rf $(VENV) $(RAWVENV) dist build
