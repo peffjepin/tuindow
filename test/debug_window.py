@@ -25,23 +25,19 @@ class Window(tuindow.Window):
 class UserInput:
     def __init__(self):
         self.data = []
-        self.dirty = True
 
     def __str__(self):
         return "".join(self.data)
 
     def append(self, c):
-        self.dirty = True
         self.data.append(c)
 
     def backspace(self):
         if self.data:
             self.data.pop(-1)
-        self.dirty = True
 
     def consume(self):
         v = str(self)
-        self.dirty = True
         self.data.clear()
         return v
 
