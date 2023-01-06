@@ -6,9 +6,10 @@ import tuindow
 class Window(tuindow.Window):
     def __init__(self):
         super().__init__()
-        self.left_panel = self.panel(0, 0, self.width // 2, self.height)
+        self.left_panel = self.panel(
+            0, 0, self.width // 2, self.height, padding=2, padding_fills="_")
         self.right_panel = self.panel(
-            self.width // 2, 0, self.width // 2, self.height
+            self.width // 2, 0, self.width // 2, self.height, padding=2, padding_fills="_", fill="."
         )
 
     def layout(self):
@@ -48,7 +49,6 @@ class UserInput:
 def main():
     with Window() as window:
         user_input = UserInput()
-        window.left_panel.styleline(0, padding=2)
 
         while 1:
             window.update()
@@ -59,11 +59,7 @@ def main():
                 if key == tuindow.ESCAPE:
                     return 0
                 elif key == "\n":
-                    index = window.right_panel.first_available
-                    if index is not None:
-                        window.right_panel.styleline(index, padding=2)
-                        window.right_panel.writeline(
-                            index, user_input.consume())
+                    window.right_panel.write_if_available(user_input.consume())
                 elif key == tuindow.BACKSPACE:
                     user_input.backspace()
                 else:

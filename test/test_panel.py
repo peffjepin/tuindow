@@ -228,3 +228,35 @@ def test_write_if_available_when_not_available():
 
     assert panel.readline(0) == "abc"
     assert panel.readline(1) == "bcd"
+
+
+def test_default_default_style():
+    style = structs.Style(fill="!")
+    panel = Panel(0, 0, 10, 2, default_style=style)
+
+    assert panel[0].style == style
+    assert panel[1].style == style
+
+
+def test_updating_default_style_updates_existing_lines():
+    style1 = structs.Style(fill="!")
+    style2 = structs.Style(fill="@")
+    panel = Panel(0, 0, 10, 2, default_style=style1)
+
+    panel.set_default_style(style2)
+
+    assert panel[0].style == style2
+    assert panel[1].style == style2
+
+
+def test_updating_default_style_doesnt_update_existing_lines():
+    style1 = structs.Style(fill="!")
+    style2 = structs.Style(fill="@")
+    style3 = structs.Style(fill="#")
+    panel = Panel(0, 0, 10, 2, default_style=style1)
+
+    panel.styleline(0, style3)
+    panel.set_default_style(style2)
+
+    assert panel[0].style == style3
+    assert panel[1].style == style2

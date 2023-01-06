@@ -6,6 +6,9 @@ from typing import Iterable
 from typing import Tuple
 from typing import Optional
 from typing import Union
+from typing import Dict
+from typing import List
+from typing import Any
 
 from . import structs
 from . import validation
@@ -22,6 +25,7 @@ class Line:
     def __init__(
         self,
         length: int,
+        style: Optional[structs.Style] = None,
         data: str = "",
         fill: str = " ",
         padding: Union[int, Tuple[int, int]] = (0, 0),
@@ -30,9 +34,12 @@ class Line:
         with self._wait_update_display():
             self.data = data
             self.length = length
-            self.format(
-                fill=fill, padding=padding, padding_fills=padding_fills
-            )
+            if style is not None:
+                self.style = style
+            else:
+                self.format(
+                    fill=fill, padding=padding, padding_fills=padding_fills
+                )
 
     @contextlib.contextmanager
     def _wait_update_display(self) -> Iterator[None]:
@@ -176,6 +183,8 @@ class Panel:
     available: int = -1
     _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
     _lines: Tuple[Line, ...] = ()
+    _style: Union[structs.Style, Dict[Any, Any]]
+    _styled: List[bool]
 
     def __init__(
         self,
@@ -183,7 +192,11 @@ class Panel:
         top: int,
         width: int,
         height: int,
+        default_style: Optional[structs.Style] = None,
+        **kwargs
     ) -> None:
+        self._styled = []
+        self._style = default_style if default_style is not None else kwargs
         self.rect = structs.Rect(left, top, width, height)
 
     def __repr__(self) -> str:
@@ -218,6 +231,7 @@ class Panel:
             self[index].format(**kwargs)
         else:
             self[index].style = style
+        self._styled[index] = True
 
     def write_if_available(self, value: str) -> None:
         if not self.available:
@@ -233,8 +247,12 @@ class Panel:
             for ln in current_lines:
                 ln.length = self.width
                 yield ln
-        while 1:
-            yield Line(self.width)
+        if isinstance(self._style, structs.Style):
+            while 1:
+                yield Line(self.width, self._style)
+        else:
+            while 1:
+                yield Line(self.width, **self._style)
 
     @property
     def first_available(self) -> Optional[int]:
@@ -242,6 +260,20 @@ class Panel:
             if not ln.data:
                 return i
         return None
+
+    def set_default_style(self, style: Optional[structs.Style] = None, **kwargs) -> None:
+        if style is not None:
+            self._style = style
+            for styled, ln in zip(self._styled, self._lines):
+                if styled:
+                    continue
+                ln.style = style
+        else:
+            self._style = kwargs
+            for styled, ln in zip(self._styled, self._lines):
+                if styled:
+                    continue
+                ln.format(**kwargs)
 
     @property
     def rect(self) -> structs.Rect:
@@ -261,6 +293,12 @@ class Panel:
         self._rect = rect
         lines = self._linegen(self._lines)
         self._lines = tuple(next(lines) for _ in range(rect.height))
+
+        if len(self._styled) < rect.height:
+            self._styled.extend([False] * (rect.height-len(self._styled)))
+        else:
+            self._styled = self._styled[:rect.height]
+
         self.available = sum(1 if ln.data == "" else 0 for ln in self)
         self.dirty = True
 

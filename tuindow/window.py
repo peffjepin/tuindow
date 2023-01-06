@@ -216,9 +216,9 @@ class Window:
                 validation.rects_dont_collide("panel", panel.rect, other.rect)
 
     def panel(
-        self, left: int, top: int, width: int, height: int
+        self, left: int, top: int, width: int, height: int, **kwargs
     ) -> buffers.Panel:
-        new_panel = buffers.Panel(left, top, width, height)
+        new_panel = buffers.Panel(left, top, width, height, **kwargs)
         self._check_panel_collisions(new_panel)
         self._user_panels.append(new_panel)
         self._mutually_exclusive_panels()
