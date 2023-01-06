@@ -10,10 +10,11 @@ from curses import ascii
 from typing import Deque
 from typing import Optional
 from typing import List
-from typing import NamedTuple
 from typing import Tuple
 
 from . import buffers
+from . import structs
+from . import validation
 
 
 class WindowError(Exception):
@@ -56,7 +57,7 @@ class Clock:
         self._interval = 1 / value
 
 
-class SpecialKey(enum.Enum):
+class SpecialKeys(enum.Enum):
     BACKSPACE = "BACKSPACE"
     ESCAPE = "ESCAPE"
     F0 = "F0"
@@ -82,30 +83,30 @@ class SpecialKey(enum.Enum):
 
 
 _curses_key_map = {
-    curses.KEY_BACKSPACE: SpecialKey.BACKSPACE.value,
-    curses.KEY_F0: SpecialKey.F0.value,
-    curses.KEY_F1: SpecialKey.F1.value,
-    curses.KEY_F2: SpecialKey.F2.value,
-    curses.KEY_F3: SpecialKey.F3.value,
-    curses.KEY_F4: SpecialKey.F4.value,
-    curses.KEY_F5: SpecialKey.F5.value,
-    curses.KEY_F6: SpecialKey.F6.value,
-    curses.KEY_F7: SpecialKey.F7.value,
-    curses.KEY_F8: SpecialKey.F8.value,
-    curses.KEY_F9: SpecialKey.F9.value,
-    curses.KEY_F10: SpecialKey.F10.value,
-    curses.KEY_F11: SpecialKey.F11.value,
-    curses.KEY_F12: SpecialKey.F12.value,
-    curses.KEY_DOWN: SpecialKey.DOWN.value,
-    curses.KEY_LEFT: SpecialKey.LEFT.value,
-    curses.KEY_RIGHT: SpecialKey.RIGHT.value,
-    curses.KEY_UP: SpecialKey.UP.value,
-    ascii.ESC: SpecialKey.ESCAPE.value,
+    curses.KEY_BACKSPACE: SpecialKeys.BACKSPACE.value,
+    curses.KEY_F0: SpecialKeys.F0.value,
+    curses.KEY_F1: SpecialKeys.F1.value,
+    curses.KEY_F2: SpecialKeys.F2.value,
+    curses.KEY_F3: SpecialKeys.F3.value,
+    curses.KEY_F4: SpecialKeys.F4.value,
+    curses.KEY_F5: SpecialKeys.F5.value,
+    curses.KEY_F6: SpecialKeys.F6.value,
+    curses.KEY_F7: SpecialKeys.F7.value,
+    curses.KEY_F8: SpecialKeys.F8.value,
+    curses.KEY_F9: SpecialKeys.F9.value,
+    curses.KEY_F10: SpecialKeys.F10.value,
+    curses.KEY_F11: SpecialKeys.F11.value,
+    curses.KEY_F12: SpecialKeys.F12.value,
+    curses.KEY_DOWN: SpecialKeys.DOWN.value,
+    curses.KEY_LEFT: SpecialKeys.LEFT.value,
+    curses.KEY_RIGHT: SpecialKeys.RIGHT.value,
+    curses.KEY_UP: SpecialKeys.UP.value,
+    ascii.ESC: SpecialKeys.ESCAPE.value,
     **{ord(c): c for c in string.printable},
 }
 
 
-class CursesInput:
+class _CursesInput:
     _cache: Deque[str]
     _dummy_cache: Deque[str]
     _stdscr: curses.window
@@ -143,34 +144,11 @@ class CursesInput:
         return _curses_key_map.get(curses_ch, chr(curses_ch))
 
 
-class AABB(NamedTuple):
-    left: int
-    top: int
-    width: int
-    height: int
-
-
-def _aabb_collides(b1: AABB, b2: AABB):
-    """
-    None of the following can be True during a collision:
-        b1 left   >= b2 right
-        b1 top    >= b2 bottom
-        b1 right  <= b2 left
-        b1 bottom <= b2 top
-    """
-    return (
-        b1.left < b2.left + b2.width
-        and b1.top < b2.top + b2.height
-        and b1.left + b1.width > b2.left
-        and b1.top + b1.height > b2.top
-    )
-
-
 class Window:
     clock: Clock
 
     _stdscr: curses.window
-    _input: CursesInput
+    _input: _CursesInput
     _default_panel: Optional[buffers.Panel] = None
     _user_panels: List[buffers.Panel]
 
@@ -181,7 +159,7 @@ class Window:
 
     def _init_curses(self) -> None:
         self._stdscr = curses.initscr()
-        self._input = CursesInput(self._stdscr, self._do_layout)
+        self._input = _CursesInput(self._stdscr, self._do_layout)
         self._stdscr.keypad(True)
         self._stdscr.nodelay(True)
         curses.noecho()
@@ -211,56 +189,57 @@ class Window:
 
     def _do_layout(self) -> None:
         if self._default_panel:
-            self._default_panel.width = self.width
-            self._default_panel.height = self.height
+            self._default_panel.rect = self.rect
         self.layout()
+        if self._user_panels:
+            with validation.pool(WindowError):
+                for i, p in enumerate(self._user_panels):
+                    p.dirty = True
+                    validation.rect_in_bounds("panel", p.rect, self.rect)
+
+                    if i == len(self._user_panels) - 1:
+                        break
+
+                    for j in range(i+1, len(self._user_panels)):
+                        validation.rects_dont_collide(
+                            "panel", p.rect, self._user_panels[j].rect)
 
     def layout(self) -> None:
         """stub for subclass to implement a resize event handler"""
 
     def _check_panel_collisions(self, panel: buffers.Panel) -> None:
-        box = AABB(panel.x, panel.y, panel.width, panel.height)
-        if any(
-            _aabb_collides(box, edge_box) for edge_box in self._aabb_boundaries
-        ):
-            raise WindowError(
-                "Trying to create out of bounds panel: "
-                f"{panel=!r}, window={self!r}"
+        with validation.pool(WindowError):
+            validation.rect_in_bounds(
+                "panel", rect=panel.rect, bounds=self.rect
             )
+            for other in self._user_panels:
+                validation.rects_dont_collide("panel", panel.rect, other.rect)
 
-        collisions_with_existing = [
-            _aabb_collides(box, AABB(p.x, p.y, p.width, p.height))
-            for p in self._user_panels
-        ]
-        if any(collisions_with_existing):
-            error = f"Panel collision detected: {panel=!r} collides with"
-            for i, collides in enumerate(collisions_with_existing):
-                error += f" {self._user_panels[i]!r}"
-            raise WindowError(error)
-
-    def panel(self, x: int, y: int, width: int, height: int) -> buffers.Panel:
-        if self._default_panel:
-            self._raise_mutually_exclusive_panels()
-        new_panel = buffers.Panel(x, y, width, height)
+    def panel(
+        self, left: int, top: int, width: int, height: int
+    ) -> buffers.Panel:
+        new_panel = buffers.Panel(left, top, width, height)
         self._check_panel_collisions(new_panel)
         self._user_panels.append(new_panel)
+        self._mutually_exclusive_panels()
         return new_panel
 
     @property
-    def _aabb_boundaries(self) -> Tuple[AABB, AABB, AABB, AABB]:
+    def _boundary_rects(
+        self,
+    ) -> Tuple[structs.Rect, structs.Rect, structs.Rect, structs.Rect]:
         return (
-            AABB(-1, 0, 1, self.height),  # left
-            AABB(0, -1, self.width, 1),  # top
-            AABB(self.width, 0, 1, self.height),  # right
-            AABB(0, self.height, self.width, 1),  # bottom
+            structs.Rect(-1, 0, 1, self.height),  # left
+            structs.Rect(0, -1, self.width, 1),  # top
+            structs.Rect(self.width, 0, 1, self.height),  # right
+            structs.Rect(0, self.height, self.width, 1),  # bottom
         )
 
     @property
     def default_panel(self) -> buffers.Panel:
-        if self._user_panels:
-            self._raise_mutually_exclusive_panels()
-        if not self._default_panel:
-            self._default_panel = buffers.Panel(0, 0, self.width, self.height)
+        if self._default_panel is None:
+            self._default_panel = buffers.Panel(*self.rect)
+        self._mutually_exclusive_panels()
         return self._default_panel
 
     @property
@@ -272,6 +251,10 @@ class Window:
         return self._stdscr.getmaxyx()[0]
 
     @property
+    def rect(self) -> structs.Rect:
+        return structs.Rect(0, 0, self.width, self.height)
+
+    @property
     def keys(self) -> typing.Iterable[str]:
         return self._input
 
@@ -279,6 +262,28 @@ class Window:
         return next(self.clock)
 
     def draw(self) -> None:
+        w, h = self.width, self.height
+        try:
+            self._draw_unsafe()
+        except WindowError:
+            if w != self.width or h != self.height:
+                # resize occurred, clean the pending user input
+                # so we can consume the resize event and trigger
+                # a window re-layout then try again
+                self._input.cache_pending_keys()
+                self.draw()
+            else:
+                raise
+
+    def _draw_unsafe(self):
+        """
+        We have no control over the window resizing so all draw calls
+        are inheirently unsafe.
+
+        It is up to the caller of this method to recognize the resize
+        and make another draw attempt
+        """
+
         if self._default_panel:
             panels = [self._default_panel]
         else:
@@ -286,31 +291,31 @@ class Window:
 
         for panel in panels:
             for i, line in enumerate(panel):
-                self._draw_line(panel.x, panel.y + i, line)
+                if panel.dirty or line.dirty:
+                    self._draw_line(panel.left, panel.top + i, line)
+                line.dirty = False
+            panel.dirty = False
 
         self._stdscr.refresh()
 
     def _draw_line(self, x: int, y: int, line: buffers.Line):
-        if line.dirty:
-            try:
-                # clear user input before drawing in case
-                # we need to react to a resize key event
-                self._input.cache_pending_keys()
-                self._stdscr.addstr(y, x, line.display)
-            except curses.error:
-                if x + line.length == self.width and y == self.height-1:
-                    # writing the last character in the window causes an error
-                    # because it places the cursor out of bounds
-                    return
-                raise WindowError(
-                    f"failed to draw line (length={line.length}): "
-                    f"{line.display!r} at {x=}, {y=} on {self!r}"
-                )
-        line.dirty = False
+        try:
+            self._stdscr.addstr(y, x, line.display)
+        except curses.error:
+            # writing the last character in the window causes an error
+            # because it places the cursor out of bounds
+            if x + line.length == self.width and y == self.height - 1:
+                line.dirty = False
+                return
+            raise WindowError(
+                f"failed to draw line (length={line.length}): "
+                f"at {x=}, {y=} on {self!r}"
+            )
 
-    def _raise_mutually_exclusive_panels(self) -> None:
-        raise WindowError(
-            "Window objects can be used with the Window.default_panel or "
-            "you can create your own panels with Window.panel calls. "
-            "These panel options are mutually exclusive."
-        )
+    def _mutually_exclusive_panels(self) -> None:
+        if self._user_panels and self._default_panel is not None:
+            raise WindowError(
+                "Window objects can be used with the Window.default_panel or "
+                "you can create your own panels with Window.panel calls. "
+                "These panel options are mutually exclusive."
+            )

@@ -37,8 +37,8 @@ def test_making_panel_with_window(args):
     window = Window()
     p2 = window.panel(*args)
 
-    assert p1.x == p2.x
-    assert p1.y == p2.y
+    assert p1.left == p2.left
+    assert p1.top == p2.top
     assert p1.width == p2.width
     assert p1.height == p2.height
 
@@ -51,7 +51,7 @@ def test_making_panel_with_window(args):
     (TEST_WIDTH-1, TEST_HEIGHT-1, 2, 2)
 )
 def test_out_of_bounds_panel(args, expect_error):
-    with expect_error(WindowError, "panel", "out of bounds"):
+    with expect_error(WindowError, "panel", "bounds"):
         window = Window()
         window.panel(*args)
 
@@ -59,12 +59,13 @@ def test_out_of_bounds_panel(args, expect_error):
 def test_mutually_exclusive_user_panels_and_default_panel(expect_error):
     with expect_error(WindowError, "panel", "default_panel", "mutually exclusive"):
         window = Window()
-        p = window.panel(0, 0, 1, 1)
-        p2 = window.default_panel
+        window.panel(0, 0, 1, 1)
+        window.default_panel
+
     with expect_error(WindowError, "panel", "default_panel", "mutually exclusive"):
         window = Window()
-        p = window.default_panel
-        p2 = window.panel(0, 0, 1, 1)
+        window.default_panel
+        window.panel(0, 0, 1, 1)
 
 
 @params(
@@ -105,7 +106,7 @@ def test_collision_with_many_panels_in_window(expect_error):
 
 def test_default_panel_covers_whole_window():
     window = Window()
-    assert window.default_panel.x == 0
-    assert window.default_panel.y == 0
+    assert window.default_panel.left == 0
+    assert window.default_panel.top == 0
     assert window.default_panel.width == window.width
     assert window.default_panel.height == window.height

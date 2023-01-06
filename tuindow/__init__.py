@@ -1,7 +1,7 @@
 from .window import Window
 from .window import WindowError
 from .window import Clock
-from .window import SpecialKey as _Keys
+from .window import SpecialKeys as _Keys
 from .buffers import Line
 from .buffers import Panel
 

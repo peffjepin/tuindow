@@ -4,27 +4,42 @@ from tuindow import Line
 
 
 @params(
-    "line,expected",
-    (Line(3, data="abc"), "abc"),
-    (Line(2, data="abc"), "ab"),
-    (Line(2), "  "),
-    (Line(3, data="ab"), "ab "),
-    (Line(3, data="ab", fill="."), "ab."),
-    (Line(5, data="abcde", padding=(1, 0)), " abcd"),
-    (Line(5, data="abcde", padding=(0, 1)), "abcd "),
-    (Line(5, data="abcde", padding=(2, 1)), "  ab "),
-    (Line(5, data="ab", padding=(1, 1)), " ab  "),
-    (Line(5, data="abc", padding=(1, 1), padding_fill="."), ".abc."),
-    (Line(5, data="ab", padding=(1, 1), padding_fill="!", fill="?"), "!ab?!"),
-    (Line(5, data="ab", padding=(1, 1), padding_fill=("!", ".")), "!ab ."),
-    (Line(5, data="abc", padding=1), " abc "),
-    (Line(5, data="a", padding=(-1, 1)), "   a "),
-    (Line(5, data="a", padding=-1), "  a  "),
-    (Line(5, data="a", padding=(-1, -3)), " a   "),
-    (Line(5, data="ab", padding=(-1, -1)), "  ab "),
-    (Line(5, data="a", padding=-1, padding_fill="!", fill="."), "!!a!!"),
+    "kwargs,expected",
+    ({"length": 3, "data": "abc"}, "abc"),
+    ({"length": 2, "data": "abc"}, "ab"),
+    ({"length": 2}, "  "),
+    ({"length": 3, "data": "ab"}, "ab "),
+    ({"length": 3, "data": "ab", "fill": "."}, "ab."),
+    ({"length": 5, "data": "abcde", "padding": (1, 0)}, " abcd"),
+    ({"length": 5, "data": "abcde", "padding": (0, 1)}, "abcd "),
+    ({"length": 5, "data": "abcde", "padding": (2, 1)}, "  ab "),
+    ({"length": 5, "data": "ab", "padding": (1, 1)}, " ab  "),
+    ({"length": 5, "data": "abc", "padding": (1, 1), "padding_fills": "."}, ".abc."),
+    (
+        {
+            "length": 5, "data": "ab", "padding": (1, 1),
+            "padding_fills": "!", "fill": "?"
+        },
+        "!ab?!"
+    ),
+    (
+        {
+            "length": 5, "data": "ab", "padding": (1, 1),
+            "padding_fills": ("!", ".")
+        },
+        "!ab ."
+    ),
+    ({"length": 5, "data": "abc", "padding": 1}, " abc "),
+    ({"length": 5, "data": "a", "padding": (-1, 1)}, "   a "),
+    ({"length": 5, "data": "a", "padding": -1}, "  a  "),
+    ({"length": 5, "data": "a", "padding": (-1, -3)}, " a   "),
+    ({"length": 5, "data": "ab", "padding": (-1, -1)}, "  ab "),
+    ({"length": 5, "data": "a", "padding": -1,
+     "padding_fills": "!", "fill": "."}, "!!a!!"),
 )
-def test_display(line, expected):
+def test_display(kwargs, expected):
+    line = Line(**kwargs)
+    print(repr(line))
     assert line.display == expected
 
 
@@ -34,7 +49,7 @@ def test_display(line, expected):
     ("data", "abc"),
     ("length", 2),
     ("padding", (1, 2)),
-    ("padding_fill", "."),
+    ("padding_fills", "."),
 )
 def test_dirty_on_state_change(attr, value):
     ln = Line(10)
@@ -74,7 +89,7 @@ def test_fill_must_be_length_1(expect_error, fill):
 @params("fill", "", "--", ("", " "), (" ", ""))
 def test_padding_fill_must_be_length_1(expect_error, fill):
     with expect_error(ValueError, "fill", "length 1", repr(fill)):
-        Line(10, padding_fill=fill)
+        Line(10, padding_fills=fill)
 
 
 def test_dirty_on_init():
@@ -97,7 +112,7 @@ def test_pads_updated_when_padding_fill_updated():
     ln = Line(4, padding=(1, 2))
     assert ln.display == "    "
 
-    ln.padding_fill = "."
+    ln.padding_fills = "."
     assert ln.display == ". .."
 
 
@@ -118,53 +133,3 @@ def test_insufficient_padding_space_error_when_line_length_changed(expect_error)
 
     with expect_error(ValueError, "padding", "length", repr(2), repr((1, 2))):
         ln.length = 2
-
-
-def test_data_is_anything_that_implements_str():
-    class Data:
-        def __str__(self):
-            return "txt"
-    assert Line(3, data=Data()).display == "txt"
-
-
-@params(
-    "data1,data2",
-    (1, 2),
-    ("", " "),
-    (True, False),
-    (1.0, 2.0),
-)
-def test_line_data_primitives(data1, data2):
-    ln = Line(10, data=data1)
-    assert ln.dirty
-    assert str(data1) in ln.display
-    ln.dirty = False
-
-    ln.data = data2
-    assert ln.dirty
-    assert str(data2) in ln.display
-
-
-def test_line_data_protocol():
-    class MyData:
-        dirty = False
-
-        def __str__(self):
-            return "hello"
-
-    data = MyData()
-    assert not data.dirty
-
-    # The window has yet to draw this line, and so it should still
-    # be flagged dirty despite the implementation dirty flag currently being False
-    ln = Line(10, data=data)
-    assert ln.dirty
-    ln.dirty = False
-    assert not ln.dirty
-    assert "hello" in ln.display
-
-    # without touching the line we should be able to enable the dirty flag
-    # with our data implementation
-    data.dirty = True
-    assert ln.dirty
-    assert "hello" in ln.display

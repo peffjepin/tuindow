@@ -1,267 +1,154 @@
-from typing import List
+import contextlib
+
 from typing import Iterator
+from typing import Generator
+from typing import Iterable
 from typing import Tuple
 from typing import Optional
 from typing import Union
-from typing import Any
-from typing import Protocol
 
-
-class _Validation:
-    @classmethod
-    def _error(
-        cls, value_description: str, value: Any, error_reason: str
-    ) -> None:
-        raise ValueError(f"{value_description} ({value=!r}) {error_reason}")
-
-    @classmethod
-    def not_negative(cls, desc: str, value: Union[int, float]) -> None:
-        if value < 0:
-            cls._error(desc, value, "cannot be negative")
-
-    @classmethod
-    def greater_than_x(
-        cls, desc: str, value: Union[int, float], x: Union[int, float]
-    ) -> None:
-        if not value > x:
-            cls._error(desc, value, f"must be greater than {x!r}")
-
-    @classmethod
-    def padding_overflow(cls, value: Tuple[int, int], length: int) -> None:
-        if sum(v for v in value if v > 0) >= length:
-            cls._error("padding", value, f"cannot consume entire {length=}")
-
-    @classmethod
-    def padding_fill(cls, value: Tuple[str, str]) -> None:
-        if any(len(v) != 1 for v in value):
-            cls._error(
-                "padding_fill values", value, "must be strings of length 1"
-            )
-
-    @classmethod
-    def length_one_string(cls, desc: str, value: str) -> None:
-        if len(value) != 1:
-            cls._error(desc, value, "must be a string of length 1")
-
-
-class _Padding:
-    _pads: Tuple[str, str] = ("", "")
-    _value: Tuple[int, int] = (0, 0)
-    _fill: Tuple[str, str] = (" ", " ")
-
-    def __init__(
-        self,
-        value: Tuple[int, int],
-        fill: Tuple[str, str],
-        max_length: int,
-    ) -> None:
-        self.set_value(value, max_length)
-        self.fill = fill
-
-    def validate_max_length(self, max_length: int) -> None:
-        _Validation.padding_overflow(self.value, max_length)
-
-    def pad_string(
-        self, string: str, max_length: int, regular_fill: str
-    ) -> str:
-        final_display_length = max_length - self._required_length
-
-        left_pad, right_pad = self._pads
-        left_val, right_val = self.value
-
-        display = string[:final_display_length]
-        remaining = final_display_length - len(string)
-
-        if remaining == 0:
-            return left_pad + display + right_pad
-
-        # there is extra space that needs filling
-        # if there is variable length padding (values less than 0) fill appropriate space with padding fill
-        # otherwise fill remainder with regular fill
-
-        if left_val >= 0:
-            if right_val < 0:
-                # right pad variable/left pad constant -- extend right with padding fill
-                f = self.fill[1]
-            else:
-                # both pads constant, extend right with default fill
-                f = regular_fill
-            right_pad = remaining * f + right_pad
-
-        elif right_val >= 0:
-            # left pad is variable/right pad is constant -- extend left with padding fill
-            left_pad += remaining * self.fill[0]
-
-        else:
-            # both pads are variable, treat values like weights and fill with padding fill
-            total = left_val + right_val
-            left_extra = int(round(left_val / total * remaining))
-            right_extra = int(round(right_val / total * remaining))
-
-            # fix off by one errors from rounding, leaving higher weight with the extra padding
-            off = remaining - (left_extra + right_extra)
-            assert off in (-1, 0, 1)
-            if off == 1:
-                if left_extra >= right_extra:
-                    left_extra += off
-                else:
-                    right_extra += off
-            elif off == -1:
-                if left_extra >= right_extra:
-                    right_extra += off
-                else:
-                    left_extra += off
-            left_pad += self.fill[0] * left_extra
-            right_pad += self.fill[1] * right_extra
-
-        return left_pad + display + right_pad
-
-    @property
-    def value(self) -> Tuple[int, int]:
-        return self._value
-
-    def set_value(self, value: Tuple[int, int], max_length: int) -> None:
-        _Validation.padding_overflow(value, max_length)
-        self._value = value
-        self._pads = (
-            self.value[0] * self.fill[0] if self.value[0] >= 0 else "",
-            self.value[1] * self.fill[1] if self.value[1] >= 0 else "",
-        )
-
-    @property
-    def fill(self) -> Tuple[str, str]:
-        return self._fill
-
-    @fill.setter
-    def fill(self, value: Tuple[str, str]) -> None:
-        _Validation.padding_fill(value)
-        self._fill = value
-        self._pads = (
-            self.value[0] * self.fill[0] if self.value[0] >= 0 else "",
-            self.value[1] * self.fill[1] if self.value[1] >= 0 else "",
-        )
-
-    @property
-    def _required_length(self) -> int:
-        return sum(map(len, self._pads))
-
-
-# Immutable primatives can be used plainly as Line data
-# because the line can itself track when it's data attribute
-# is modified and update it's dirty flag internally.
-#
-# Immutability is not enough on it's own:
-#   consider the case of the tuple ([], [])
-#   The internal lists could be updated and the line has
-#   no way of knowing that it must be redrawn
-LineDataPrimitive = Union[str, int, float, bool]
-
-
-# If you need something more robust than the available primitives
-# you can implement this protocol. The protocol implementation
-# should set its `dirty` flag to True when the implementation wants
-# the window to redraw the line. The window will clear the dirty flag
-# after it redraws the line.
-class LineDataProtocol(Protocol):
-    dirty: bool
-    def __str__(self) -> str: ...
-
-
-LineData = Union[LineDataPrimitive, LineDataProtocol]
+from . import structs
+from . import validation
 
 
 class Line:
-    _dirty: bool = True
-    _data: LineData = ""
-    _fill: str = " "
+    dirty: bool = True
+
+    _display: str = ""
+    _data: str = ""
+    _style: structs.Style = structs.Style()
     _length: int
-    _padding: _Padding
 
     def __init__(
         self,
         length: int,
-        data: LineData = "",
+        data: str = "",
         fill: str = " ",
         padding: Union[int, Tuple[int, int]] = (0, 0),
-        padding_fill: Optional[Union[str, Tuple[str, str]]] = None,
+        padding_fills: Optional[Union[str, Tuple[str, str]]] = None,
     ) -> None:
+        with self._wait_update_display():
+            self.data = data
+            self.length = length
+            self.format(
+                fill=fill, padding=padding, padding_fills=padding_fills
+            )
 
-        # self.value property catches this, but requires self.padding
-        # to be initialized. Without this check here, the error message
-        # for initializing with an invalid length would indicate a padding
-        # overflow which would be a slightly inaccurate error message
-        _Validation.greater_than_x("Line length", length, 0)
+    @contextlib.contextmanager
+    def _wait_update_display(self) -> Iterator[None]:
+        """
+        avoids recalculating display with each state change until context exits
+        """
 
-        if padding_fill is None:
-            padding_fill = (fill, fill)
-        elif isinstance(padding_fill, str):
-            padding_fill = (padding_fill, padding_fill)
-        if isinstance(padding, int):
-            padding = (padding, padding)
-        self._padding = _Padding(padding, padding_fill, length)
+        implementation = self._update_display
+        called = 0
 
-        self.length = length
-        self.fill = fill
-        self.dirty = True
-        self.data = data
+        def patch() -> None:
+            nonlocal called
+            called += 1
+
+        setattr(self, "_update_display", patch)
+        yield
+        setattr(self, "_update_display", implementation)
+
+        if called:
+            self._update_display()
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(length={self.length!r}, data={self.data!r}, "
+            f"fill={self.fill!r}, padding={self.padding!r}, padding_fills={self.padding_fills!r})"
+        )
+
+    def format(
+        self,
+        fill: str = " ",
+        padding: Union[int, Tuple[int, int]] = (0, 0),
+        padding_fills: Optional[Union[str, Tuple[str, str]]] = None,
+    ) -> None:
+        if padding_fills is None:
+            padding_fills = fill
+        self.style = structs.Style(
+            fill=fill,
+            padding=structs.Padding.calculate(
+                fills=(
+                    padding_fills
+                    if isinstance(padding_fills, tuple)
+                    else (padding_fills, padding_fills)
+                ),
+                values=(
+                    padding
+                    if isinstance(padding, tuple)
+                    else (padding, padding)
+                ),
+            ),
+        )
+        self._update_display()
 
     @property
-    def padding_fill(self) -> Tuple[str, str]:
-        return self._padding.fill
+    def style(self) -> structs.Style:
+        return self._style
 
-    @padding_fill.setter
-    def padding_fill(
+    @style.setter
+    def style(self, style: structs.Style) -> None:
+        with validation.pool(ValueError):
+            validation.length_one_string("fill style", style.fill)
+            validation.padding_overflow(style.padding, self.length)
+            validation.padding_fills(style.padding)
+
+        self._style = style
+        self._update_display()
+
+    @property
+    def padding_fills(self) -> Tuple[str, str]:
+        return self._style.padding.fills
+
+    @padding_fills.setter
+    def padding_fills(
         self, value: Optional[Union[str, Tuple[str, str]]]
     ) -> None:
         if value is None:
-            self._padding.fill = (self.fill, self.fill)
+            value = (self.fill, self.fill)
         elif isinstance(value, str):
-            self._padding.fill = (value, value)
-        else:
-            self._padding.fill = value
-        self.dirty = True
+            value = (value, value)
+        self.style = structs.Style(
+            fill=self.fill,
+            padding=structs.Padding.calculate(
+                fills=value, values=self.padding
+            ),
+        )
 
     @property
     def padding(self) -> Tuple[int, int]:
-        return self._padding.value
+        return self._style.padding.values
 
     @padding.setter
     def padding(self, value: Union[int, Tuple[int, int]]) -> None:
         if isinstance(value, int):
             value = (value, value)
-        self._padding.set_value(value, self.length)
-        self.dirty = True
+        self.style = structs.Style(
+            fill=self._style.fill,
+            padding=structs.Padding.calculate(
+                fills=self.padding_fills, values=value
+            ),
+        )
 
     @property
     def fill(self) -> str:
-        return self._fill
+        return self._style.fill
 
     @fill.setter
     def fill(self, value: str) -> None:
-        _Validation.length_one_string("Line fill", value)
-        self._fill = value
-        self.dirty = True
+        self.style = structs.Style(fill=value, padding=self.style.padding)
 
     @property
-    def data(self) -> LineData:
+    def data(self) -> str:
         return self._data
 
     @data.setter
-    def data(self, value: LineData) -> None:
+    def data(self, value: str) -> None:
         self._data = value
-        self.dirty = True
-
-    @property
-    def dirty(self) -> bool:
-        return self._dirty or getattr(self._data, "dirty", False)
-
-    @dirty.setter
-    def dirty(self, value: bool) -> None:
-        self._dirty = value
-        try:
-            setattr(self._data, "dirty", value)
-        except AttributeError:
-            pass
+        self._update_display()
 
     @property
     def length(self) -> int:
@@ -269,80 +156,169 @@ class Line:
 
     @length.setter
     def length(self, value: int) -> None:
-        _Validation.greater_than_x("Line length", value, 0)
-        self._padding.validate_max_length(value)
+        with validation.pool(ValueError):
+            validation.greater_than_x("Line length", value, 0)
+            validation.padding_overflow(self.style.padding, value)
         self._length = value
-        self.dirty = True
+        self._update_display()
 
     @property
     def display(self) -> str:
-        return self._padding.pad_string(str(self.data), self.length, self.fill)
+        return self._display
+
+    def _update_display(self) -> None:
+        self._display = _pad_string(self._data, self._style, self._length)
+        self.dirty = True
 
 
 class Panel:
-    lines: List[Line]
+    dirty: bool = True
+    _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
+    _lines: Tuple[Line, ...] = ()
 
-    _x: int = -1
-    _y: int = -1
-    _width: int = -1
-    _height: int = -1
-
-    def __init__(self, x: int, y: int, width: int, height: int) -> None:
-        self.lines = []
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.lines = [Line(width) for _ in range(height)]
+    def __init__(
+        self,
+        left: int,
+        top: int,
+        width: int,
+        height: int,
+    ) -> None:
+        self.rect = structs.Rect(left, top, width, height)
 
     def __repr__(self) -> str:
-        x = self.x
-        y = self.y
-        width = self.width
-        height = self.height
-        return f"{self.__class__.__name__}({x=}, {y=}, {width=}, {height=})"
+        rect = self._rect
+        return f"{self.__class__.__name__}({rect=})"
 
     def __iter__(self) -> Iterator[Line]:
-        return iter(self.lines[: self.height])
+        return iter(self._lines)
+
+    def __getitem__(self, index: int) -> Line:
+        return self._lines[index]
+
+    def __len__(self) -> int:
+        return self.height
+
+    def writeline(self, index: int, value: str) -> None:
+        self[index].data = value
+
+    def readline(self, index: int) -> str:
+        return self[index].data
+
+    def styleline(self, index: int, style=None, **kwargs) -> None:
+        if style is None:
+            self[index].format(**kwargs)
+        else:
+            self[index].style = style
+
+    def _linegen(
+        self, current_lines: Optional[Iterable[Line]] = None
+    ) -> Generator[Line, None, None]:
+        if current_lines is not None:
+            for ln in current_lines:
+                ln.length = self.width
+                yield ln
+        while 1:
+            yield Line(self.width)
 
     @property
-    def x(self) -> int:
-        return self._x
+    def rect(self) -> structs.Rect:
+        return self._rect
 
-    @x.setter
-    def x(self, value: int) -> None:
-        _Validation.not_negative("Panel x", value)
-        self._x = value
+    @rect.setter
+    def rect(self, rect: structs.Rect | tuple[int, int, int, int]) -> None:
+        if isinstance(rect, tuple):
+            rect = structs.Rect(*rect)
+
+        with validation.pool(ValueError):
+            validation.not_negative("Panel.left", rect.left)
+            validation.not_negative("Panel.top", rect.top)
+            validation.greater_than_x("Panel.width", rect.width, 0)
+            validation.greater_than_x("Panel.height", rect.height, 0)
+
+        self._rect = rect
+        lines = self._linegen(self._lines)
+        self._lines = tuple(next(lines) for _ in range(rect.height))
+        self.dirty = True
 
     @property
-    def y(self) -> int:
-        return self._y
+    def left(self) -> int:
+        return self._rect.left
 
-    @y.setter
-    def y(self, value: int) -> None:
-        _Validation.not_negative("Panel y", value)
-        self._y = value
+    @left.setter
+    def left(self, value: int) -> None:
+        self.rect = structs.Rect(value, self.top, self.width, self.height)
+
+    @property
+    def top(self) -> int:
+        return self._rect.top
+
+    @top.setter
+    def top(self, value: int) -> None:
+        self.rect = structs.Rect(self.left, value, self.width, self.height)
 
     @property
     def width(self) -> int:
-        return self._width
+        return self._rect.width
 
     @width.setter
     def width(self, value: int) -> None:
-        _Validation.greater_than_x("Panel width", value, 0)
-        if value != self._width and self.lines:
-            for line in self.lines:
-                line.length = value
-        self._width = value
+        self.rect = structs.Rect(self.left, self.top, value, self.height)
 
     @property
     def height(self) -> int:
-        return self._height
+        return self._rect.height
 
     @height.setter
     def height(self, value: int) -> None:
-        _Validation.greater_than_x("Panel height", value, 0)
-        if value > self._height:
-            while value > len(self.lines):
-                self.lines.append(Line(self.width))
-        self._height = value
+        self.rect = structs.Rect(self.left, self.top, self.width, value)
+
+
+def _pad_string(string: str, style: structs.Style, max_length: int) -> str:
+    """Assumes validation is handled by the caller"""
+
+    final_display_length = max_length - sum(map(len, style.padding.pads))
+    remaining = final_display_length - len(string)
+    if remaining == 0:
+        return style.padding.pads[0] + string + style.padding.pads[1]
+
+    left_pad, right_pad = style.padding.pads
+    display = string[:final_display_length]
+
+    if remaining == 0:
+        return left_pad + display + right_pad
+
+    if style.padding.values[0] >= 0:
+        if style.padding.values[1] < 0:
+            # right pad variable/left pad constant -- extend right with padding fill
+            right_pad = remaining * style.padding.fills[1] + right_pad
+        else:
+            # both pads constant, extend display with default fill
+            display += remaining * style.fill
+
+    elif style.padding.values[1] >= 0:
+        # left pad is variable/right pad is constant -- extend left with padding fill
+        left_pad += remaining * style.padding.fills[0]
+
+    else:
+        # both pads are variable, treat values like weights and fill with padding fill
+        total = sum(style.padding.values)
+        left_extra = int(round(style.padding.values[0] / total * remaining))
+        right_extra = int(round(style.padding.values[1] / total * remaining))
+
+        # fix off by one errors from rounding, leaving higher weight with the extra padding
+        off = remaining - (left_extra + right_extra)
+        assert off in (-1, 0, 1)
+        if off == 1:
+            if left_extra >= right_extra:
+                left_extra += off
+            else:
+                right_extra += off
+        elif off == -1:
+            if left_extra >= right_extra:
+                right_extra += off
+            else:
+                left_extra += off
+        left_pad += style.padding.fills[0] * left_extra
+        right_pad += style.padding.fills[1] * right_extra
+
+    return left_pad + display + right_pad
