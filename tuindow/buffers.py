@@ -225,7 +225,7 @@ class Panel:
         return self._rect
 
     @rect.setter
-    def rect(self, rect: structs.Rect | tuple[int, int, int, int]) -> None:
+    def rect(self, rect: Union[structs.Rect, Tuple[int, int, int, int]]) -> None:
         if isinstance(rect, tuple):
             rect = structs.Rect(*rect)
 

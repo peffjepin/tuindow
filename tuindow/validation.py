@@ -3,6 +3,7 @@ import contextlib
 from typing import List
 from typing import Iterator
 from typing import Type
+from typing import Union
 
 from . import structs
 
@@ -43,12 +44,12 @@ def _error(exc: Exception) -> None:
         raise exc
 
 
-def not_negative(desc: str, value: int | float) -> None:
+def not_negative(desc: str, value: Union[int, float]) -> None:
     if value < 0:
         _error(ValueError(f"{desc} ({value!r}) cannot be negative"))
 
 
-def greater_than_x(desc: str, value: int | float, x: int | float) -> None:
+def greater_than_x(desc: str, value: Union[int, float], x: Union[int, float]) -> None:
     if not value > x:
         _error(ValueError(f"{desc} ({value=!r}) must be greater than {x!r}"))
 

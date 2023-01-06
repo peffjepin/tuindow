@@ -1,10 +1,11 @@
 VENV ?= makevenv
 PYTHON = $(VENV)/bin/python3
+SYS_PYTHON ?= python3
 
 .PHONY: clean test type_check test_all
 
 $(VENV):
-	python3 -m venv $@
+	$(SYS_PYTHON) -m venv $@
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install -e ".[dev]"
 
