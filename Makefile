@@ -1,24 +1,24 @@
 VENV ?= makevenv
-PYTHON = $(VENV)/bin/python3
-SYS_PYTHON ?= python3
+PYTHON ?= python3
+VPYTHON = $(VENV)/bin/python3
 
-.PHONY: clean test type_check test_all
+.PHONY: clean pytest mypy test
 
 $(VENV):
-	$(SYS_PYTHON) -m venv $@
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -e ".[dev]"
+	$(PYTHON) -m venv $@
+	$(VPYTHON) -m pip install --upgrade pip
+	$(VPYTHON) -m pip install -e ".[dev]"
 
-$(PYTHON): $(VENV)
+$(VPYTHON): $(VENV)
 
-test: $(PYTHON)
-	$(PYTHON) -m pytest
+pytest: $(VPYTHON)
+	$(VPYTHON) -m pytest
 
-type_check: $(PYTHON)
-	$(PYTHON) -m mypy tuindow
-	$(PYTHON) -m mypy test
+mypy: $(VPYTHON)
+	$(VPYTHON) -m mypy tuindow
+	$(VPYTHON) -m mypy test
 
-test_all: type_check test
+test: mypy pytest
 
 clean:
 	-rm -rf $(VENV)
