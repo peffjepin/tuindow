@@ -1,6 +1,6 @@
 from .conftest import params
 
-from tuindow import Line
+from tuindow.buffers import Line
 
 
 @params(

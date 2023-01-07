@@ -1,4 +1,5 @@
 import contextlib
+import sys
 
 from typing import Iterator
 from typing import Generator
@@ -188,15 +189,17 @@ class Panel:
 
     def __init__(
         self,
-        left: int,
-        top: int,
-        width: int,
-        height: int,
+        left: int = 0,
+        top: int = 0,
+        width: int = sys.maxsize,
+        height: int = sys.maxsize,
         default_style: Optional[structs.Style] = None,
         **kwargs
     ) -> None:
         self._styled = []
         self._style = default_style if default_style is not None else kwargs
+        if width == sys.maxsize or height == sys.maxsize:
+            return
         self.rect = structs.Rect(left, top, width, height)
 
     def __repr__(self) -> str:
