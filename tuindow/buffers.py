@@ -295,6 +295,9 @@ class Panel:
 
         if rect is None:
             rect = structs.Rect(left, top, width, height)
+        else:
+            # construct a new rect to ensure all panels have unique rects
+            rect = structs.Rect(*rect)
 
         with validation.pool(ValueError):
             validation.not_negative("Panel.left", rect.left)

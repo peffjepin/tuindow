@@ -8,6 +8,9 @@ class Rect(NamedTuple):
     width: int
     height: int
 
+    def __iter__(self):
+        return iter((self.left, self.top, self.width, self.height))
+
     @property
     def right(self) -> int:
         return self.left + self.width
