@@ -180,7 +180,6 @@ class Line:
 
 
 class Panel:
-    dirty: bool = True
     available: int = -1
     _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
     _lines: Tuple[Line, ...] = ()
