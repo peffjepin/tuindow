@@ -1,39 +1,40 @@
 from tuindow.cursor import Cursor as LibCursor
 
 
-def Cursor(initial_value, index=0):
+def Cursor(initial_value, index=0, line=0):
     value = initial_value
 
-    def read(x, y):
+    def read(line):
         return value
 
-    def write(new_value):
+    def write(line, new_value):
         nonlocal value
         value = new_value
 
-    return LibCursor(index, 0, read=read, write=write)
+    return LibCursor(index, line, readline=read, writeline=write)
 
 
 def test_read_write_functions():
     value = "abc"
-    read_x = -1
-    read_y = -1
+    line_read = -1
+    line_written = -1
 
-    def read(x: int, y: int) -> str:
-        nonlocal read_x
-        nonlocal read_y
-        read_x = x
-        read_y = y
+    def read(line) -> str:
+        nonlocal line_read
+        line_read = line
         return value
 
-    def write() -> str:
+    def write(line, value) -> str:
+        nonlocal line_written
+        line_written = line
         return value
 
-    cursor = LibCursor(x=1, y=2, read=read, write=write)
+    cursor = LibCursor(index=1, line=2, readline=read, writeline=write)
 
     assert cursor.data == "abc"
-    assert read_x == 1
-    assert read_y == 2
+    assert line_read == 2
+    cursor.insert("123")
+    assert line_written == 2
 
 
 def test_data():
@@ -49,6 +50,15 @@ def test_insert_into_empty_data():
 
     assert cursor.data == "a"
     assert cursor.index == 1
+
+
+def test_inserting_empty_string():
+    cursor = Cursor("")
+
+    cursor.insert("")
+
+    assert cursor.data == ""
+    assert cursor.index == 0
 
 
 def test_insert_before_data():
@@ -288,3 +298,74 @@ def test_set_index_positive_error(expect_error):
 
     with expect_error(IndexError):
         cursor.index = 4
+
+
+def test_cursor_line_modification():
+    cursor = Cursor("abc")
+
+    assert cursor.line == 0
+
+    cursor.line = 2
+    assert cursor.line == 2
+
+    # no upper bound on cursor line
+    cursor.line = 1000
+    assert cursor.line == 1000
+
+
+def test_cursor_resets_index_when_line_changes():
+    cursor = Cursor("abc", index=3)
+
+    assert cursor.line == 0
+    assert cursor.index == 3
+
+    cursor.line = 1
+    assert cursor.line == 1
+    assert cursor.index == 0
+
+
+def test_cursor_line_negative(expect_error):
+    cursor = Cursor("abc")
+
+    with expect_error(ValueError, "cannot be negative"):
+        cursor.line = -1
+
+
+def test_cursor_line_sent_to_read_function():
+    lines = [
+        "",
+        "",
+    ]
+
+    def read(line) -> str:
+        return lines[line]
+
+    def write(line, value) -> None:
+        lines[line] = value
+
+    cursor = LibCursor(0, 0, readline=read, writeline=write)
+    cursor.insert("abc")
+    cursor.line = 1
+    cursor.insert("def")
+
+    assert lines == ["abc", "def"]
+
+
+def test_set_cursor_position():
+    lines = [
+        "abc",
+        "defghi",
+    ]
+
+    def read(line) -> str:
+        return lines[line]
+
+    def write(line, value) -> None:
+        lines[line] = value
+
+    cursor = LibCursor(0, 0, readline=read, writeline=write)
+
+    cursor.position = (-1, 1)
+    assert cursor.data == "defghi"
+    assert cursor.index == 6
+    assert cursor.line == 1

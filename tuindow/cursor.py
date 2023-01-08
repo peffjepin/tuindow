@@ -1,78 +1,96 @@
 from typing import Callable
 from typing import Tuple
 
+from . import validation
+
 
 class Cursor:
-    def __init__(self, x: int, y: int, read: Callable[[int, int], str], write: Callable[[str], None]):
-        self._x = x
-        self._y = y
-        self._read = read
-        self._write = write
+    def __init__(self, index: int, line: int, readline: Callable[[int], str], writeline: Callable[[int, str], None]):
+        self._index = index
+        self._line = line
+        self._readline = lambda: readline(self.line)
+        self._writeline = lambda v: writeline(self.line, v)
 
     @property
     def index(self) -> int:
-        return self._x
+        return self._index
 
     @index.setter
     def index(self, value: int) -> None:
         if value == 0:
-            self._x = 0
+            self._index = 0
             return
 
-        length = len(self._read(*self.position))
+        length = len(self._readline())
         if value < 0:
             proposed = length + 1 + value
             if proposed < 0:
                 raise IndexError
-            self._x = proposed
+            self._index = proposed
         else:
             if value > length:
                 raise IndexError
-            self._x = value
+            self._index = value
+
+    @property
+    def line(self) -> int:
+        return self._line
+
+    @line.setter
+    def line(self, value: int) -> None:
+        validation.not_negative("Cursor.line", value)
+        if value != self._line:
+            self.index = 0
+        self._line = value
 
     @property
     def position(self) -> Tuple[int, int]:
-        return self._x, self._y
+        return self._index, self._line
+
+    @position.setter
+    def position(self, value: Tuple[int, int]) -> None:
+        self.line = value[1]
+        self.index = value[0]
 
     @property
     def data(self) -> str:
-        return self._read(*self.position)
+        return self._readline()
 
     def insert(self, value: str) -> None:
-        current = self._read(*self.position)
-        self._write(current[:self._x] + value + current[self._x:])
-        self._x += len(value)
+        current = self._readline()
+        self._writeline(current[:self._index] + value + current[self._index:])
+        self._index += len(value)
 
     def backspace(self, n: int = 1) -> None:
-        if self._x == 0:
+        if self._index == 0:
             return
-        if self._x <= n:
-            self._write(self._read(*self.position)[self._x:])
-            self._x = 0
+        if self._index <= n:
+            self._writeline(self._readline()[self._index:])
+            self._index = 0
             return
 
-        current = self._read(*self.position)
-        self._write(current[:self._x-n] + current[self._x:])
-        self._x -= n
+        current = self._readline()
+        self._writeline(current[:self._index-n] + current[self._index:])
+        self._index -= n
 
     def delete(self, n: int = 1) -> None:
-        current = self._read(*self.position)
-        if self._x >= len(current) - 1:
+        current = self._readline()
+        if self._index >= len(current) - 1:
             return
-        if n >= len(current) - self._x:
-            self._write(current[:self._x])
+        if n >= len(current) - self._index:
+            self._writeline(current[:self._index])
             return
-        self._write(current[:self._x] + current[self._x+n:])
+        self._writeline(current[:self._index] + current[self._index+n:])
 
     def consume(self) -> str:
-        current = self._read(*self.position)
-        self._write("")
-        self._x = 0
+        current = self._readline()
+        self._writeline("")
+        self._index = 0
         return current
 
     def left(self, n: int = 1) -> None:
-        self._x = max(0, self._x - n)
+        self._index = max(0, self._index - n)
 
     def right(self, n: int = 1) -> None:
-        current = self._read(*self.position)
-        self._x = min(len(current), self._x + n)
+        current = self._readline()
+        self._index = min(len(current), self._index + n)
