@@ -373,3 +373,31 @@ def test_multiline_position_index_error(expect_error):
 
     with expect_error(IndexError, "Cursor", "index"):
         cursor.position = (1, 0)
+
+
+def test_set_active():
+    cursor1 = Cursor("1")
+    cursor2 = Cursor("2")
+
+    cursor1.set_active()
+    assert LibCursor.active is cursor1
+    cursor2.set_active()
+    assert LibCursor.active is cursor2
+
+
+def test_clear_active_instance():
+    cursor1 = Cursor("1")
+
+    cursor1.set_active()
+    assert LibCursor.active is cursor1
+    cursor1.clear_active()
+    assert LibCursor.active is None
+
+
+def test_clear_active_class():
+    cursor1 = Cursor("1")
+
+    cursor1.set_active()
+    assert LibCursor.active is cursor1
+    LibCursor.clear_active()
+    assert LibCursor.active is None

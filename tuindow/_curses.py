@@ -33,6 +33,7 @@ class SpecialKeys(enum.Enum):
     LEFT = "LEFT"
     RIGHT = "RIGHT"
     UP = "UP"
+    DELETE = "DELETE"
 
     def __eq__(self, other: object) -> bool:
         return str(other) == self.value
@@ -57,6 +58,7 @@ _curses_key_map: Dict[int, str] = {
     curses.KEY_LEFT: SpecialKeys.LEFT.value,
     curses.KEY_RIGHT: SpecialKeys.RIGHT.value,
     curses.KEY_UP: SpecialKeys.UP.value,
+    curses.KEY_DC: SpecialKeys.DELETE.value,
     ascii.ESC: SpecialKeys.ESCAPE.value,
     **{ord(c): c for c in string.printable},
 }
@@ -70,6 +72,7 @@ class Instance:
     _stdscr: curses.window
     _resize_callback: Callable[[int, int], None]
     _cached_keys: Optional[Deque[str]]
+    _cursor_enabled: bool = False
 
     def __init__(self, resize_callback: Callable[[int, int], None]):
         self._resize_callback = resize_callback
@@ -85,6 +88,7 @@ class Instance:
         curses.noecho()
         curses.cbreak()
         curses.curs_set(0)
+        self._cursor_enabled = False
         self._stdscr.clear()
         self._stdscr.refresh()
         return self
@@ -142,3 +146,13 @@ class Instance:
 
     def update_display(self) -> None:
         self._stdscr.refresh()
+
+    def draw_cursor(self, x: int, y: int) -> None:
+        if not self._cursor_enabled:
+            curses.curs_set(1)
+            self._cursor_enabled = True
+        self._stdscr.move(y, x)
+
+    def disable_cursor(self) -> None:
+        curses.curs_set(0)
+        self._cursor_enabled = False

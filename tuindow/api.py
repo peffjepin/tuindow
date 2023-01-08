@@ -9,6 +9,7 @@ from . import _curses
 
 from .buffers import Panel
 from .window import Window
+from .cursor import Cursor
 
 
 __all__ = (
@@ -19,6 +20,7 @@ __all__ = (
     "keys",
     "Panel",
     "BACKSPACE",
+    "DELETE",
     "ESCAPE",
     "F0",
     "F1",
@@ -40,6 +42,7 @@ __all__ = (
 )
 
 BACKSPACE = _curses.SpecialKeys.BACKSPACE
+DELETE = _curses.SpecialKeys.DELETE
 ESCAPE = _curses.SpecialKeys.ESCAPE
 F0 = _curses.SpecialKeys.F0
 F1 = _curses.SpecialKeys.F1
@@ -150,7 +153,7 @@ def draw(*panels: Panel) -> None:
     assert _instance
     size = _instance.size
     try:
-        _unsafe_draw_panels(*panels)
+        _unsafe_draw(*panels)
     except _curses.CursesError:
         if _instance.size != size:
             _instance.cache_pending_keys()
@@ -158,15 +161,25 @@ def draw(*panels: Panel) -> None:
         raise
 
 
-def _unsafe_draw_panels(*panels: Panel) -> None:
+def _unsafe_draw(*panels: Panel) -> None:
     global _window
     assert _instance
+
     for panel in panels:
         dirty = _window.draw(panel.rect)
         for i, line in enumerate(panel):
             if dirty or line.dirty:
                 _instance.write_text(panel.left, panel.top + i, line.display)
             line.dirty = False
+
+        if Cursor.active is panel.cursor:
+            x = panel.cursor.index+panel.left + \
+                panel[panel.cursor.line].display_offset
+            y = panel.cursor.line+panel.top
+            _instance.draw_cursor(x, y)
+
+    if Cursor.active is None:
+        _instance.disable_cursor()
 
 
 @requires_init

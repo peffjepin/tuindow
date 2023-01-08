@@ -260,3 +260,14 @@ def test_updating_default_style_doesnt_update_existing_lines():
 
     assert panel[0].style == style3
     assert panel[1].style == style2
+
+
+def test_cursor():
+    panel = Panel(0, 0, 10, 2)
+
+    panel.cursor.insert("abc")
+    panel.cursor.line = 1
+    panel.cursor.insert("def")
+
+    assert panel.readline(0) == "abc"
+    assert panel.readline(1) == "def"

@@ -13,10 +13,12 @@ from typing import Any
 
 from . import structs
 from . import validation
+from . import cursor
 
 
 class Line:
     dirty: bool = True
+    display_offset: int
 
     _display: str = ""
     _data: str = ""
@@ -175,12 +177,16 @@ class Line:
         return self._display
 
     def _update_display(self) -> None:
-        self._display = _pad_string(self._data, self._style, self._length)
+        lpad, rpad = self.style.calculate_pads(self._data, self._length)
+        self.display_offset = len(lpad)
+        self._display = lpad + \
+            self._data[:(self._length-len(lpad)-len(rpad))] + rpad
         self.dirty = True
 
 
 class Panel:
     available: int = -1
+    cursor: cursor.Cursor
     _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
     _lines: Tuple[Line, ...] = ()
     _style: Union[structs.Style, Dict[Any, Any]]
@@ -197,6 +203,16 @@ class Panel:
     ) -> None:
         self._styled = []
         self._style = default_style if default_style is not None else kwargs
+
+        def cursor_readline(ln: int) -> str:
+            return self[ln].data
+
+        def cursor_writeline(ln: int, value: str) -> None:
+            self[ln].data = value
+
+        self.cursor = cursor.Cursor(
+            index=0, line=0, readline=cursor_readline, writeline=cursor_writeline)
+
         if width == sys.maxsize or height == sys.maxsize:
             return
         self.set_rect(rect=structs.Rect(left, top, width, height))
@@ -356,54 +372,3 @@ class Panel:
         self.set_rect(
             rect=structs.Rect(self.left, self.top, self.width, value)
         )
-
-
-def _pad_string(string: str, style: structs.Style, max_length: int) -> str:
-    """Assumes validation is handled by the caller"""
-
-    final_display_length = max_length - sum(map(len, style.padding.pads))
-    remaining = final_display_length - len(string)
-    if remaining == 0:
-        return style.padding.pads[0] + string + style.padding.pads[1]
-
-    left_pad, right_pad = style.padding.pads
-    display = string[:final_display_length]
-
-    if remaining == 0:
-        return left_pad + display + right_pad
-
-    if style.padding.values[0] >= 0:
-        if style.padding.values[1] < 0:
-            # right pad variable/left pad constant -- extend right with padding fill
-            right_pad = remaining * style.padding.fills[1] + right_pad
-        else:
-            # both pads constant, extend display with default fill
-            display += remaining * style.fill
-
-    elif style.padding.values[1] >= 0:
-        # left pad is variable/right pad is constant -- extend left with padding fill
-        left_pad += remaining * style.padding.fills[0]
-
-    else:
-        # both pads are variable, treat values like weights and fill with padding fill
-        total = sum(style.padding.values)
-        left_extra = int(round(style.padding.values[0] / total * remaining))
-        right_extra = int(round(style.padding.values[1] / total * remaining))
-
-        # fix off by one errors from rounding, leaving higher weight with the extra padding
-        off = remaining - (left_extra + right_extra)
-        assert off in (-1, 0, 1)
-        if off == 1:
-            if left_extra >= right_extra:
-                left_extra += off
-            else:
-                right_extra += off
-        elif off == -1:
-            if left_extra >= right_extra:
-                right_extra += off
-            else:
-                left_extra += off
-        left_pad += style.padding.fills[0] * left_extra
-        right_pad += style.padding.fills[1] * right_extra
-
-    return left_pad + display + right_pad

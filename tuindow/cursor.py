@@ -1,10 +1,13 @@
 from typing import Callable
 from typing import Tuple
+from typing import Optional
 
 from . import validation
 
 
 class Cursor:
+    active: Optional["Cursor"]
+
     def __init__(
         self,
         index: int,
@@ -19,6 +22,13 @@ class Cursor:
 
     def __repr__(self) -> str:
         return f"<Cursor line={self.line} index={self.index}>"
+
+    @classmethod
+    def clear_active(cls):
+        cls.active = None
+
+    def set_active(self) -> None:
+        Cursor.active = self
 
     @property
     def index(self) -> int:
@@ -72,7 +82,7 @@ class Cursor:
     def insert(self, value: str) -> None:
         current = self._readline()
         self._writeline(
-            current[: self._index] + value + current[self._index :]
+            current[: self._index] + value + current[self._index:]
         )
         self._index += len(value)
 
@@ -80,12 +90,12 @@ class Cursor:
         if self._index == 0:
             return
         if self._index <= n:
-            self._writeline(self._readline()[self._index :])
+            self._writeline(self._readline()[self._index:])
             self._index = 0
             return
 
         current = self._readline()
-        self._writeline(current[: self._index - n] + current[self._index :])
+        self._writeline(current[: self._index - n] + current[self._index:])
         self._index -= n
 
     def delete(self, n: int = 1) -> None:
@@ -95,7 +105,7 @@ class Cursor:
         if n >= len(current) - self._index:
             self._writeline(current[: self._index])
             return
-        self._writeline(current[: self._index] + current[self._index + n :])
+        self._writeline(current[: self._index] + current[self._index + n:])
 
     def consume(self) -> str:
         current = self._readline()

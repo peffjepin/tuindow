@@ -65,3 +65,49 @@ class Padding(NamedTuple):
 class Style(NamedTuple):
     padding: Padding = Padding.calculate((" ", " "), (0, 0))
     fill: str = " "
+
+    def calculate_pads(self, string: str, max_length: int) -> Tuple[str, str]:
+        final_display_length = max_length - sum(map(len, self.padding.pads))
+        remaining = final_display_length - len(string)
+
+        if remaining == 0:
+            return self.padding.pads
+
+        left_pad, right_pad = self.padding.pads
+
+        if self.padding.values[0] >= 0:
+            if self.padding.values[1] < 0:
+                # right pad variable/left pad constant -- extend right with padding fill
+                right_pad = remaining * self.padding.fills[1] + right_pad
+            else:
+                # both pads constant, extend display with default fill
+                right_pad = (remaining * self.fill) + right_pad
+
+        elif self.padding.values[1] >= 0:
+            # left pad is variable/right pad is constant -- extend left with padding fill
+            left_pad += remaining * self.padding.fills[0]
+
+        else:
+            # both pads are variable, treat values like weights and fill with padding fill
+            total = sum(self.padding.values)
+            left_extra = int(round(self.padding.values[0] / total * remaining))
+            right_extra = int(
+                round(self.padding.values[1] / total * remaining))
+
+            # fix off by one errors from rounding, leaving higher weight with the extra padding
+            off = remaining - (left_extra + right_extra)
+            assert off in (-1, 0, 1)
+            if off == 1:
+                if left_extra >= right_extra:
+                    left_extra += off
+                else:
+                    right_extra += off
+            elif off == -1:
+                if left_extra >= right_extra:
+                    right_extra += off
+                else:
+                    left_extra += off
+            left_pad += self.padding.fills[0] * left_extra
+            right_pad += self.padding.fills[1] * right_extra
+
+        return left_pad, right_pad

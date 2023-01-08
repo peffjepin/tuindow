@@ -18,22 +18,24 @@ def layout(width: int, height: int):
 
 
 with tuindow.init(layout):
-    user_input = ""
-
     while 1:
-        left_panel.writeline(0, user_input)
-
+        cursor = left_panel.cursor
+        cursor.set_active()
         for key in tuindow.keys():
             if key == tuindow.ESCAPE:
                 exit(0)
             elif key == "\n":
-                right_panel.write_if_available(user_input)
-                user_input = ""
+                right_panel.write_if_available(cursor.consume())
             elif key == tuindow.BACKSPACE:
-                if user_input:
-                    user_input = user_input[:-1]
+                cursor.backspace()
+            elif key == tuindow.RIGHT:
+                cursor.right()
+            elif key == tuindow.LEFT:
+                cursor.left()
+            elif key == tuindow.DELETE:
+                cursor.delete()
             else:
-                user_input += key
+                cursor.insert(key)
 
         tuindow.draw(left_panel, right_panel)
         tuindow.update()
