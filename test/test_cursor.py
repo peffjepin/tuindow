@@ -4,7 +4,7 @@ from tuindow.cursor import Cursor as LibCursor
 def Cursor(initial_value, index=0):
     value = initial_value
 
-    def read():
+    def read(x, y):
         return value
 
     def write(new_value):
@@ -12,6 +12,28 @@ def Cursor(initial_value, index=0):
         value = new_value
 
     return LibCursor(index, 0, read=read, write=write)
+
+
+def test_read_write_functions():
+    value = "abc"
+    read_x = -1
+    read_y = -1
+
+    def read(x: int, y: int) -> str:
+        nonlocal read_x
+        nonlocal read_y
+        read_x = x
+        read_y = y
+        return value
+
+    def write() -> str:
+        return value
+
+    cursor = LibCursor(x=1, y=2, read=read, write=write)
+
+    assert cursor.data == "abc"
+    assert read_x == 1
+    assert read_y == 2
 
 
 def test_data():
@@ -171,3 +193,98 @@ def test_delete_many_overflow():
 
     assert cursor.data == "a"
     assert cursor.index == 1
+
+
+def test_consume():
+    cursor = Cursor("abc")
+
+    assert cursor.consume() == "abc"
+    assert cursor.data == ""
+
+
+def test_non_zero_index():
+    cursor = Cursor("abc", index=3)
+
+    assert cursor.consume() == "abc"
+    assert cursor.data == ""
+    assert cursor.index == 0
+
+
+def test_left():
+    cursor = Cursor("abc", index=3)
+
+    cursor.left()
+
+    assert cursor.index == 2
+
+
+def test_left_n():
+    cursor = Cursor("abc", index=3)
+
+    cursor.left(2)
+
+    assert cursor.index == 1
+
+
+def test_left_at_index_zero():
+    cursor = Cursor("abc", index=0)
+
+    cursor.left()
+
+    assert cursor.index == 0
+
+
+def test_right():
+    cursor = Cursor("abc", index=0)
+
+    cursor.right()
+
+    assert cursor.index == 1
+
+
+def test_right_n():
+    cursor = Cursor("abc", index=0)
+
+    cursor.right(2)
+
+    assert cursor.index == 2
+
+
+def test_right_past_end():
+    cursor = Cursor("abc", index=0)
+
+    cursor.right(10)
+
+    assert cursor.index == 3
+
+
+def test_set_index_negative():
+    cursor = Cursor("abc", index=0)
+
+    cursor.index = -1
+    assert cursor.index == 3
+
+    cursor.index = -4
+    assert cursor.index == 0
+
+
+def test_set_index_negative_error(expect_error):
+    cursor = Cursor("abc", index=0)
+
+    with expect_error(IndexError):
+        cursor.index = -5
+
+
+def test_set_index_positive():
+    cursor = Cursor("abc", index=0)
+
+    cursor.index = 3
+
+    assert cursor.index == 3
+
+
+def test_set_index_positive_error(expect_error):
+    cursor = Cursor("abc", index=0)
+
+    with expect_error(IndexError):
+        cursor.index = 4
