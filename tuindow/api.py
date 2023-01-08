@@ -8,6 +8,7 @@ from typing import Optional
 from . import _curses
 
 from .buffers import Panel
+from .window import Window
 
 
 __all__ = (
@@ -97,6 +98,7 @@ class Clock:
 
 _instance: Optional[_curses.Instance] = None
 _clock: Clock
+_window: Window
 _ResizeCallback = Callable[[int, int], None]
 
 
@@ -116,14 +118,21 @@ def requires_init(function):
 
 
 @contextlib.contextmanager
-def init(onresize: _ResizeCallback, tps=144):
+def init(on_resize: _ResizeCallback, tps=144):
     global _instance
     global _clock
+    global _window
 
     _clock = Clock(tps)
-    _instance = _curses.Instance(onresize)
+    _window = Window(0, 0, 1, 1)
+
+    def resize_callback(width: int, height: int) -> None:
+        _window.resize(0, 0, width, height)
+        on_resize(width, height)
+
+    _instance = _curses.Instance(resize_callback)
     with _instance:
-        onresize(*_instance.size)
+        resize_callback(*_instance.size)
         yield
     _instance = None
 
@@ -141,17 +150,25 @@ def draw(*panels: Panel) -> None:
     assert _instance
     size = _instance.size
     try:
-        for panel in panels:
-            for i, line in enumerate(panel):
-                if panel.dirty or line.dirty:
-                    _instance.write_text(
-                        panel.left, panel.top + i, line.display
-                    )
+        _unsafe_draw_panels(*panels)
     except _curses.CursesError:
         if _instance.size != size:
             _instance.cache_pending_keys()
-            return draw(panel)
+            return draw(panels)
         raise
+
+
+def _unsafe_draw_panels(*panels: Panel) -> None:
+    global _window
+    assert _instance
+    for panel in panels:
+        dirty = _window.draw(panel.rect)
+        for i, line in enumerate(panel):
+            if dirty or line.dirty:
+                _instance.write_text(
+                    panel.left, panel.top + i, line.display
+                )
+            line.dirty = False
 
 
 @requires_init
