@@ -14,6 +14,16 @@ def Cursor(initial_value, index=0, line=0):
     return LibCursor(index, line, readline=read, writeline=write)
 
 
+def MultilineCursor(lines, index, line):
+    def readline(line):
+        return lines[line]
+
+    def writeline(line, value):
+        lines[line] = value
+
+    return LibCursor(index, line, readline=readline, writeline=writeline)
+
+
 def test_read_write_functions():
     value = "abc"
     line_read = -1
@@ -331,19 +341,10 @@ def test_cursor_line_negative(expect_error):
         cursor.line = -1
 
 
-def test_cursor_line_sent_to_read_function():
-    lines = [
-        "",
-        "",
-    ]
+def test_writing_multiple_lines():
+    lines = ["", ""]
+    cursor = MultilineCursor(lines, 0, 0)
 
-    def read(line) -> str:
-        return lines[line]
-
-    def write(line, value) -> None:
-        lines[line] = value
-
-    cursor = LibCursor(0, 0, readline=read, writeline=write)
     cursor.insert("abc")
     cursor.line = 1
     cursor.insert("def")
@@ -351,21 +352,24 @@ def test_cursor_line_sent_to_read_function():
     assert lines == ["abc", "def"]
 
 
-def test_set_cursor_position():
-    lines = [
-        "abc",
-        "defghi",
-    ]
-
-    def read(line) -> str:
-        return lines[line]
-
-    def write(line, value) -> None:
-        lines[line] = value
-
-    cursor = LibCursor(0, 0, readline=read, writeline=write)
+def test_set_multiline_position_sets_line_then_index():
+    cursor = MultilineCursor(["abc", "defghi"], 0, 0)
 
     cursor.position = (-1, 1)
     assert cursor.data == "defghi"
     assert cursor.index == 6
     assert cursor.line == 1
+
+
+def test_multiline_position_line_error(expect_error):
+    cursor = MultilineCursor(["", ""], 0, 0)
+
+    with expect_error(ValueError, "Cursor", "line"):
+        cursor.position = (0, -1)
+
+
+def test_multiline_position_index_error(expect_error):
+    cursor = MultilineCursor(["", ""], 0, 0)
+
+    with expect_error(IndexError, "Cursor", "index"):
+        cursor.position = (1, 0)

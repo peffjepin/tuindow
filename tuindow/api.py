@@ -165,9 +165,7 @@ def _unsafe_draw_panels(*panels: Panel) -> None:
         dirty = _window.draw(panel.rect)
         for i, line in enumerate(panel):
             if dirty or line.dirty:
-                _instance.write_text(
-                    panel.left, panel.top + i, line.display
-                )
+                _instance.write_text(panel.left, panel.top + i, line.display)
             line.dirty = False
 
 

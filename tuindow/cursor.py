@@ -5,11 +5,20 @@ from . import validation
 
 
 class Cursor:
-    def __init__(self, index: int, line: int, readline: Callable[[int], str], writeline: Callable[[int, str], None]):
+    def __init__(
+        self,
+        index: int,
+        line: int,
+        readline: Callable[[int], str],
+        writeline: Callable[[int, str], None],
+    ):
         self._index = index
         self._line = line
         self._readline = lambda: readline(self.line)
         self._writeline = lambda v: writeline(self.line, v)
+
+    def __repr__(self) -> str:
+        return f"<Cursor line={self.line} index={self.index}>"
 
     @property
     def index(self) -> int:
@@ -25,11 +34,15 @@ class Cursor:
         if value < 0:
             proposed = length + 1 + value
             if proposed < 0:
-                raise IndexError
+                raise IndexError(
+                    f"index={value!r} out of range for {self!r} where data={self.data}"
+                )
             self._index = proposed
         else:
             if value > length:
-                raise IndexError
+                raise IndexError(
+                    f"index={value!r} out of range for {self!r} where data={self.data}"
+                )
             self._index = value
 
     @property
@@ -58,19 +71,21 @@ class Cursor:
 
     def insert(self, value: str) -> None:
         current = self._readline()
-        self._writeline(current[:self._index] + value + current[self._index:])
+        self._writeline(
+            current[: self._index] + value + current[self._index :]
+        )
         self._index += len(value)
 
     def backspace(self, n: int = 1) -> None:
         if self._index == 0:
             return
         if self._index <= n:
-            self._writeline(self._readline()[self._index:])
+            self._writeline(self._readline()[self._index :])
             self._index = 0
             return
 
         current = self._readline()
-        self._writeline(current[:self._index-n] + current[self._index:])
+        self._writeline(current[: self._index - n] + current[self._index :])
         self._index -= n
 
     def delete(self, n: int = 1) -> None:
@@ -78,9 +93,9 @@ class Cursor:
         if self._index >= len(current) - 1:
             return
         if n >= len(current) - self._index:
-            self._writeline(current[:self._index])
+            self._writeline(current[: self._index])
             return
-        self._writeline(current[:self._index] + current[self._index+n:])
+        self._writeline(current[: self._index] + current[self._index + n :])
 
     def consume(self) -> str:
         current = self._readline()
