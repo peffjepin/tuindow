@@ -113,7 +113,7 @@ class Instance:
         return width, height
 
     def cache_pending_keys(self) -> None:
-        cache = self._cached_keys
+        cache = self._cached_keys or collections.deque()
         self._cached_keys = None
         cache.extend((k for k in self.keys))
         self._cached_keys = cache

@@ -49,7 +49,9 @@ def not_negative(desc: str, value: Union[int, float]) -> None:
         _error(ValueError(f"{desc} ({value!r}) cannot be negative"))
 
 
-def greater_than_x(desc: str, value: Union[int, float], x: Union[int, float]) -> None:
+def greater_than_x(
+    desc: str, value: Union[int, float], x: Union[int, float]
+) -> None:
     if not value > x:
         _error(ValueError(f"{desc} ({value=!r}) must be greater than {x!r}"))
 
@@ -77,38 +79,13 @@ def length_one_string(desc: str, value: str) -> None:
         _error(ValueError(f"{desc} ({value!r}) must be a string of length 1"))
 
 
-def _rects_collide(r1: structs.Rect, r2: structs.Rect) -> bool:
-    """
-    None of the following can be True during a collision:
-        r1 left   >= r2 right
-        r1 top    >= r2 bottom
-        r1 right  <= r2 left
-        r1 bottom <= r2 top
-    """
-    return (
-        r1.left < r2.right
-        and r1.top < r2.bottom
-        and r1.right > r2.left
-        and r1.bottom > r2.top
-    )
-
-
-def _rect_contained(rect: structs.Rect, bounds: structs.Rect):
-    return (
-        rect.left >= bounds.left
-        and rect.top >= bounds.top
-        and rect.right <= bounds.right
-        and rect.bottom <= bounds.bottom
-    )
-
-
 def rects_dont_collide(desc: str, r1: structs.Rect, r2: structs.Rect) -> None:
-    if _rects_collide(r1, r2):
+    if r1.intersects(r2):
         _error(ValueError(f"{desc} collision detected ({r1!r}), ({r2!r})"))
 
 
 def rect_in_bounds(
     desc: str, rect: structs.Rect, bounds: structs.Rect
 ) -> None:
-    if not _rect_contained(rect, bounds):
+    if not bounds.contains(rect):
         _error(ValueError(f"{desc} not in bounds ({rect=}, {bounds=})"))

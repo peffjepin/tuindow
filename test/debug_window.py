@@ -8,8 +8,8 @@ right_panel = tuindow.Panel(padding=2, fill=".")
 
 
 def layout(width: int, height: int):
-    left_panel.rect = (0, 0, width // 2, height)
-    right_panel.rect = (
+    left_panel.set_rect(0, 0, width // 2, height)
+    right_panel.set_rect(
         width // 2,
         0,
         width // 2,

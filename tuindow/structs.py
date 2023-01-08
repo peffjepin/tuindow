@@ -16,6 +16,29 @@ class Rect(NamedTuple):
     def bottom(self) -> int:
         return self.top + self.height
 
+    def intersects(self, other: "Rect") -> bool:
+        """
+        None of the following can be True during a collision:
+            r1 left   >= r2 right
+            r1 top    >= r2 bottom
+            r1 right  <= r2 left
+            r1 bottom <= r2 top
+        """
+        return (
+            self.left < other.right
+            and self.top < other.bottom
+            and self.right > other.left
+            and self.bottom > other.top
+        )
+
+    def contains(self, other: "Rect") -> bool:
+        return (
+            other.left >= self.left
+            and other.top >= self.top
+            and other.right <= self.right
+            and other.bottom <= self.bottom
+        )
+
 
 class Padding(NamedTuple):
     fills: Tuple[str, str]

@@ -194,13 +194,13 @@ class Panel:
         width: int = sys.maxsize,
         height: int = sys.maxsize,
         default_style: Optional[structs.Style] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         self._styled = []
         self._style = default_style if default_style is not None else kwargs
         if width == sys.maxsize or height == sys.maxsize:
             return
-        self.rect = structs.Rect(left, top, width, height)
+        self.set_rect(rect=structs.Rect(left, top, width, height))
 
     def __repr__(self) -> str:
         rect = self._rect
@@ -264,7 +264,9 @@ class Panel:
                 return i
         return None
 
-    def set_default_style(self, style: Optional[structs.Style] = None, **kwargs) -> None:
+    def set_default_style(
+        self, style: Optional[structs.Style] = None, **kwargs
+    ) -> None:
         if style is not None:
             self._style = style
             for styled, ln in zip(self._styled, self._lines):
@@ -282,10 +284,18 @@ class Panel:
     def rect(self) -> structs.Rect:
         return self._rect
 
-    @rect.setter
-    def rect(self, rect: Union[structs.Rect, Tuple[int, int, int, int]]) -> None:
-        if isinstance(rect, tuple):
-            rect = structs.Rect(*rect)
+    def set_rect(
+        self,
+        left: int = -1,
+        top: int = -1,
+        width: int = 0,
+        height: int = 0,
+        rect: Optional[structs.Rect] = None,
+    ) -> None:
+        """I'd sure love to use a @rect.setter here but mypy hates Unions in setters."""
+
+        if rect is None:
+            rect = structs.Rect(left, top, width, height)
 
         with validation.pool(ValueError):
             validation.not_negative("Panel.left", rect.left)
@@ -298,9 +308,9 @@ class Panel:
         self._lines = tuple(next(lines) for _ in range(rect.height))
 
         if len(self._styled) < rect.height:
-            self._styled.extend([False] * (rect.height-len(self._styled)))
+            self._styled.extend([False] * (rect.height - len(self._styled)))
         else:
-            self._styled = self._styled[:rect.height]
+            self._styled = self._styled[: rect.height]
 
         self.available = sum(1 if ln.data == "" else 0 for ln in self)
         self.dirty = True
@@ -311,7 +321,9 @@ class Panel:
 
     @left.setter
     def left(self, value: int) -> None:
-        self.rect = structs.Rect(value, self.top, self.width, self.height)
+        self.set_rect(
+            rect=structs.Rect(value, self.top, self.width, self.height)
+        )
 
     @property
     def top(self) -> int:
@@ -319,7 +331,9 @@ class Panel:
 
     @top.setter
     def top(self, value: int) -> None:
-        self.rect = structs.Rect(self.left, value, self.width, self.height)
+        self.set_rect(
+            rect=structs.Rect(self.left, value, self.width, self.height)
+        )
 
     @property
     def width(self) -> int:
@@ -327,7 +341,9 @@ class Panel:
 
     @width.setter
     def width(self, value: int) -> None:
-        self.rect = structs.Rect(self.left, self.top, value, self.height)
+        self.set_rect(
+            rect=structs.Rect(self.left, self.top, value, self.height)
+        )
 
     @property
     def height(self) -> int:
@@ -335,7 +351,9 @@ class Panel:
 
     @height.setter
     def height(self, value: int) -> None:
-        self.rect = structs.Rect(self.left, self.top, self.width, value)
+        self.set_rect(
+            rect=structs.Rect(self.left, self.top, self.width, value)
+        )
 
 
 def _pad_string(string: str, style: structs.Style, max_length: int) -> str:

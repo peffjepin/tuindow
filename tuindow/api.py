@@ -4,7 +4,6 @@ import time
 from typing import Generator
 from typing import Callable
 from typing import Optional
-from typing import T
 
 from . import _curses
 
@@ -109,8 +108,10 @@ def requires_init(function):
     def inner(*args, **kwargs):
         if _instance is None:
             raise TuindowError(
-                f"{function!r} must be called within a `with tuindow.init(...):` block")
+                f"{function!r} must be called within a `with tuindow.init(...):` block"
+            )
         return function(*args, **kwargs)
+
     return inner
 
 
@@ -118,6 +119,7 @@ def requires_init(function):
 def init(onresize: _ResizeCallback, tps=144):
     global _instance
     global _clock
+
     _clock = Clock(tps)
     _instance = _curses.Instance(onresize)
     with _instance:
@@ -128,6 +130,7 @@ def init(onresize: _ResizeCallback, tps=144):
 
 @requires_init
 def update() -> float:
+    assert _instance
     global _clock
     _instance.update_display()
     return next(_clock)
@@ -135,13 +138,15 @@ def update() -> float:
 
 @requires_init
 def draw(*panels: Panel) -> None:
+    assert _instance
     size = _instance.size
     try:
         for panel in panels:
             for i, line in enumerate(panel):
                 if panel.dirty or line.dirty:
                     _instance.write_text(
-                        panel.left, panel.top + i, line.display)
+                        panel.left, panel.top + i, line.display
+                    )
     except _curses.CursesError:
         if _instance.size != size:
             _instance.cache_pending_keys()
@@ -151,4 +156,5 @@ def draw(*panels: Panel) -> None:
 
 @requires_init
 def keys() -> Generator[str, None, None]:
+    assert _instance
     return _instance.keys
