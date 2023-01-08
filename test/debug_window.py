@@ -3,7 +3,7 @@
 import tuindow
 
 
-left_panel = tuindow.Panel(padding=2)
+left_panel = tuindow.Panel(padding=-1)
 right_panel = tuindow.Panel(padding=2, fill=".")
 
 

@@ -39,11 +39,11 @@ def test_identical_rect_collision():
     assert Rect(1, 2, 3, 4).intersects(Rect(1, 2, 3, 4))
 
 
-@params("left", 0, 1, 2, 3, 4)
-@params("top", 0, 1, 2, 3, 4)
+@params("left", *range(-1, 3))
+@params("top", *range(-1, 3))
 def test_rect_contains(left, top):
     base = Rect(0, 0, 3, 3)
-    expected = left < 2 and top < 2
+    expected = 0 <= left < 2 and 0 <= top < 2
 
     assert base.contains(Rect(left, top, 2, 2)) is expected
 
