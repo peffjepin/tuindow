@@ -154,7 +154,7 @@ def draw(*panels: Panel) -> None:
     except _curses.CursesError:
         if _instance.size != size:
             _instance.cache_pending_keys()
-            return draw(panels)
+            return draw(*panels)
         raise
 
 
