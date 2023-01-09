@@ -173,13 +173,45 @@ def _unsafe_draw(*panels: Panel) -> None:
             line.dirty = False
 
         if Cursor.active is panel.cursor:
-            x = panel.cursor.index+panel.left + \
-                panel[panel.cursor.line].display_offset
-            y = panel.cursor.line+panel.top
-            _instance.draw_cursor(x, y)
+            _handle_active_cursor(panel, panel.cursor)
 
     if Cursor.active is None:
         _instance.disable_cursor()
+
+
+def _handle_active_cursor(panel: Panel, cursor: Cursor) -> None:
+    """
+    Enable and draw the cursor aswell as panning the line underneath the cursor
+    if the lines data extends beyond the display window
+    """
+    assert _instance
+
+    ln = panel[cursor.line]
+    pads = ln.style.calculate_pads(ln.data, ln.length)
+
+    # pan display to cursor if it is overflowing on an active cursor line
+    if ln.style.padding.values[1] < 0 and pads[1]:
+        # if right padding is variable length it is going
+        # to fill the space where our cursor should go
+        # so we will reclaim one of those characters for the cursor
+        pads = (pads[0], pads[1][1:])
+
+    remaining = ln.length - sum(map(len, pads))
+    panned_display = cursor.pan(remaining)
+    if len(panned_display) < remaining:
+        panned_display += " " * (remaining - len(panned_display))
+
+    # if cursor extends beyond the end of the display region we will clamp it
+    cursor_x = min(
+        panel.left + len(pads[0]) + cursor.index,
+        panel.left + panel.width - 1 - len(pads[1]),
+    )
+    cursor_y = cursor.line + panel.top
+
+    _instance.write_text(
+        panel.left, cursor_y, pads[0] + panned_display + pads[1]
+    )
+    _instance.draw_cursor(cursor_x, cursor_y)
 
 
 @requires_init

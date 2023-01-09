@@ -82,7 +82,7 @@ class Cursor:
     def insert(self, value: str) -> None:
         current = self._readline()
         self._writeline(
-            current[: self._index] + value + current[self._index:]
+            current[: self._index] + value + current[self._index :]
         )
         self._index += len(value)
 
@@ -90,28 +90,38 @@ class Cursor:
         if self._index == 0:
             return
         if self._index <= n:
-            self._writeline(self._readline()[self._index:])
+            self._writeline(self._readline()[self._index :])
             self._index = 0
             return
 
         current = self._readline()
-        self._writeline(current[: self._index - n] + current[self._index:])
+        self._writeline(current[: self._index - n] + current[self._index :])
         self._index -= n
 
     def delete(self, n: int = 1) -> None:
         current = self._readline()
-        if self._index >= len(current) - 1:
+        if self._index >= len(current):
             return
         if n >= len(current) - self._index:
             self._writeline(current[: self._index])
             return
-        self._writeline(current[: self._index] + current[self._index + n:])
+        self._writeline(current[: self._index] + current[self._index + n :])
 
     def consume(self) -> str:
         current = self._readline()
         self._writeline("")
         self._index = 0
         return current
+
+    def pan(self, display_length: int) -> str:
+        data = self._readline()
+        # if there is enough space to display the data no panning is necessary
+        if len(data) < display_length:
+            return data
+        # otherwise we aim to have the cursor positioned
+        # at the end of the displayable length
+        start = max(0, self.index - (display_length - 1))
+        return data[start : start + display_length]
 
     def left(self, n: int = 1) -> None:
         self._index = max(0, self._index - n)

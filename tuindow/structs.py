@@ -81,7 +81,8 @@ class Style(NamedTuple):
                 right_pad = remaining * self.padding.fills[1] + right_pad
             else:
                 # both pads constant, extend display with default fill
-                right_pad = (remaining * self.fill) + right_pad
+                # caller is responsible for filling the remaining display
+                pass
 
         elif self.padding.values[1] >= 0:
             # left pad is variable/right pad is constant -- extend left with padding fill
@@ -92,7 +93,8 @@ class Style(NamedTuple):
             total = sum(self.padding.values)
             left_extra = int(round(self.padding.values[0] / total * remaining))
             right_extra = int(
-                round(self.padding.values[1] / total * remaining))
+                round(self.padding.values[1] / total * remaining)
+            )
 
             # fix off by one errors from rounding, leaving higher weight with the extra padding
             off = remaining - (left_extra + right_extra)

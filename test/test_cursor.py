@@ -1,3 +1,5 @@
+from .conftest import params
+
 from tuindow.cursor import Cursor as LibCursor
 
 
@@ -401,3 +403,20 @@ def test_clear_active_class():
     assert LibCursor.active is cursor1
     LibCursor.clear_active()
     assert LibCursor.active is None
+
+
+@params(
+    "length,index,expected",
+    (2, 0, "01"),
+    (3, 0, "012"),
+    (3, 1, "012"),
+    (3, 2, "012"),
+    (3, 3, "123"),
+    (3, 4, "234"),
+    (3, 5, "34"),
+    (5, 5, "1234"),
+)
+def test_pan(length, index, expected):
+    cursor = Cursor("01234", index=index)
+
+    assert cursor.pan(length) == expected

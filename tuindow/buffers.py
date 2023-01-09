@@ -18,7 +18,6 @@ from . import cursor
 
 class Line:
     dirty: bool = True
-    display_offset: int
 
     _display: str = ""
     _data: str = ""
@@ -178,9 +177,13 @@ class Line:
 
     def _update_display(self) -> None:
         lpad, rpad = self.style.calculate_pads(self._data, self._length)
-        self.display_offset = len(lpad)
-        self._display = lpad + \
-            self._data[:(self._length-len(lpad)-len(rpad))] + rpad
+        display_length = self.length - len(lpad) - len(rpad)
+        remaining = display_length - len(self.data)
+        if remaining <= 0:
+            display_data = self._data[:display_length]
+        else:
+            display_data = self._data + self.style.fill * remaining
+        self._display = lpad + display_data + rpad
         self.dirty = True
 
 
@@ -211,7 +214,11 @@ class Panel:
             self[ln].data = value
 
         self.cursor = cursor.Cursor(
-            index=0, line=0, readline=cursor_readline, writeline=cursor_writeline)
+            index=0,
+            line=0,
+            readline=cursor_readline,
+            writeline=cursor_writeline,
+        )
 
         if width == sys.maxsize or height == sys.maxsize:
             return
