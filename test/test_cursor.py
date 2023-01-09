@@ -115,8 +115,7 @@ def test_insert_string():
 def test_backspace_from_end():
     cursor = Cursor("abcd", index=4)
 
-    cursor.backspace()
-
+    assert cursor.backspace() == "d"
     assert cursor.data == "abc"
     assert cursor.index == 3
 
@@ -124,8 +123,7 @@ def test_backspace_from_end():
 def test_backspace_from_beginning():
     cursor = Cursor("abcd", index=0)
 
-    cursor.backspace()
-
+    assert cursor.backspace() == ""
     assert cursor.data == "abcd"
     assert cursor.index == 0
 
@@ -133,8 +131,7 @@ def test_backspace_from_beginning():
 def test_backspace_from_the_middle():
     cursor = Cursor("abcd", index=2)
 
-    cursor.backspace()
-
+    assert cursor.backspace() == "b"
     assert cursor.data == "acd"
     assert cursor.index == 1
 
@@ -142,8 +139,7 @@ def test_backspace_from_the_middle():
 def test_backspace_multiple():
     cursor = Cursor("abcd", index=2)
 
-    cursor.backspace(2)
-
+    assert cursor.backspace(2) == "ab"
     assert cursor.data == "cd"
     assert cursor.index == 0
 
@@ -151,17 +147,23 @@ def test_backspace_multiple():
 def test_backspace_multiple_overflows():
     cursor = Cursor("abcd", index=2)
 
-    cursor.backspace(3)
-
+    assert cursor.backspace(3) == "ab"
     assert cursor.data == "cd"
+    assert cursor.index == 0
+
+
+def test_backspace_negative():
+    cursor = Cursor("abcd", index=4)
+
+    assert cursor.backspace(-1) == "abcd"
+    assert cursor.data == ""
     assert cursor.index == 0
 
 
 def test_backspace_empty():
     cursor = Cursor("")
 
-    cursor.backspace()
-
+    assert cursor.backspace() == ""
     assert cursor.data == ""
     assert cursor.index == 0
 
@@ -169,8 +171,7 @@ def test_backspace_empty():
 def test_delete_empty():
     cursor = Cursor("")
 
-    cursor.delete()
-
+    assert cursor.delete() == ""
     assert cursor.data == ""
     assert cursor.index == 0
 
@@ -178,8 +179,7 @@ def test_delete_empty():
 def test_delete_beginning():
     cursor = Cursor("abc")
 
-    cursor.delete()
-
+    assert cursor.delete() == "a"
     assert cursor.data == "bc"
     assert cursor.index == 0
 
@@ -187,8 +187,7 @@ def test_delete_beginning():
 def test_delete_middle():
     cursor = Cursor("abc", index=1)
 
-    cursor.delete()
-
+    assert cursor.delete() == "b"
     assert cursor.data == "ac"
     assert cursor.index == 1
 
@@ -196,8 +195,7 @@ def test_delete_middle():
 def test_delete_end():
     cursor = Cursor("abc", index=3)
 
-    cursor.delete()
-
+    assert cursor.delete() == ""
     assert cursor.data == "abc"
     assert cursor.index == 3
 
@@ -205,8 +203,7 @@ def test_delete_end():
 def test_delete_many():
     cursor = Cursor("abc", index=0)
 
-    cursor.delete(2)
-
+    assert cursor.delete(2) == "ab"
     assert cursor.data == "c"
     assert cursor.index == 0
 
@@ -214,10 +211,17 @@ def test_delete_many():
 def test_delete_many_overflow():
     cursor = Cursor("abc", index=1)
 
-    cursor.delete(100)
-
+    assert cursor.delete(100) == "bc"
     assert cursor.data == "a"
     assert cursor.index == 1
+
+
+def test_delete_negative():
+    cursor = Cursor("abc", index=0)
+
+    assert cursor.delete(-1) == "abc"
+    assert cursor.data == ""
+    assert cursor.index == 0
 
 
 def test_consume():

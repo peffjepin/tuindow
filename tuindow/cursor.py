@@ -85,26 +85,34 @@ class Cursor:
         )
         self._index += len(value)
 
-    def backspace(self, n: int = 1) -> None:
+    def backspace(self, n: int = 1) -> str:
         if self._index == 0:
-            return
-        if self._index <= n:
-            self._writeline(self._readline()[self._index:])
+            return ""
+
+        current = self._readline()
+
+        if self._index <= n or n < 0:
+            self._writeline(current[self._index:])
+            removed = current[:self._index]
             self._index = 0
-            return
+        else:
+            self._writeline(current[: self._index - n] + current[self._index:])
+            removed = current[self._index-n:self._index]
+            self._index -= n
+        return removed
 
+    def delete(self, n: int = 1) -> str:
         current = self._readline()
-        self._writeline(current[: self._index - n] + current[self._index:])
-        self._index -= n
 
-    def delete(self, n: int = 1) -> None:
-        current = self._readline()
         if self._index >= len(current):
-            return
-        if n >= len(current) - self._index:
+            return ""
+
+        if n >= len(current) - self._index or n < 0:
             self._writeline(current[: self._index])
-            return
+            return current[self._index:]
+
         self._writeline(current[: self._index] + current[self._index + n:])
+        return current[self._index:self._index + n]
 
     def consume(self) -> str:
         current = self._readline()
