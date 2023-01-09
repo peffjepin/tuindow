@@ -42,18 +42,9 @@ class Cursor:
 
         length = len(self._readline())
         if value < 0:
-            proposed = length + 1 + value
-            if proposed < 0:
-                raise IndexError(
-                    f"index={value!r} out of range for {self!r} where data={self.data}"
-                )
-            self._index = proposed
+            self._index = max(0, length + 1 + value)
         else:
-            if value > length:
-                raise IndexError(
-                    f"index={value!r} out of range for {self!r} where data={self.data}"
-                )
-            self._index = value
+            self._index = min(value, len(self._readline()))
 
     @property
     def line(self) -> int:
@@ -82,7 +73,7 @@ class Cursor:
     def insert(self, value: str) -> None:
         current = self._readline()
         self._writeline(
-            current[: self._index] + value + current[self._index :]
+            current[: self._index] + value + current[self._index:]
         )
         self._index += len(value)
 
@@ -90,12 +81,12 @@ class Cursor:
         if self._index == 0:
             return
         if self._index <= n:
-            self._writeline(self._readline()[self._index :])
+            self._writeline(self._readline()[self._index:])
             self._index = 0
             return
 
         current = self._readline()
-        self._writeline(current[: self._index - n] + current[self._index :])
+        self._writeline(current[: self._index - n] + current[self._index:])
         self._index -= n
 
     def delete(self, n: int = 1) -> None:
@@ -105,7 +96,7 @@ class Cursor:
         if n >= len(current) - self._index:
             self._writeline(current[: self._index])
             return
-        self._writeline(current[: self._index] + current[self._index + n :])
+        self._writeline(current[: self._index] + current[self._index + n:])
 
     def consume(self) -> str:
         current = self._readline()
@@ -121,7 +112,7 @@ class Cursor:
         # otherwise we aim to have the cursor positioned
         # at the end of the displayable length
         start = max(0, self.index - (display_length - 1))
-        return data[start : start + display_length]
+        return data[start: start + display_length]
 
     def left(self, n: int = 1) -> None:
         self._index = max(0, self._index - n)

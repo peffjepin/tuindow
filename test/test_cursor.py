@@ -290,11 +290,11 @@ def test_set_index_negative():
     assert cursor.index == 0
 
 
-def test_set_index_negative_error(expect_error):
+def test_set_index_negative_overflow():
     cursor = Cursor("abc", index=0)
 
-    with expect_error(IndexError):
-        cursor.index = -5
+    cursor.index = -5
+    assert cursor.index == 0
 
 
 def test_set_index_positive():
@@ -305,11 +305,11 @@ def test_set_index_positive():
     assert cursor.index == 3
 
 
-def test_set_index_positive_error(expect_error):
+def test_set_index_positive_overflow():
     cursor = Cursor("abc", index=0)
 
-    with expect_error(IndexError):
-        cursor.index = 4
+    cursor.index = 4
+    assert cursor.index == 3
 
 
 def test_cursor_line_modification():
@@ -368,13 +368,6 @@ def test_multiline_position_line_error(expect_error):
 
     with expect_error(ValueError, "Cursor", "line"):
         cursor.position = (0, -1)
-
-
-def test_multiline_position_index_error(expect_error):
-    cursor = MultilineCursor(["", ""], 0, 0)
-
-    with expect_error(IndexError, "Cursor", "index"):
-        cursor.position = (1, 0)
 
 
 def test_set_active():

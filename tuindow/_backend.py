@@ -94,6 +94,7 @@ class Instance:
         self._stdscr = curses.initscr()
         self._stdscr.keypad(True)
         self._stdscr.nodelay(True)
+        curses.start_color()
         curses.noecho()
         curses.cbreak()
         curses.curs_set(0)
