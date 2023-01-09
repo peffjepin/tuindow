@@ -243,6 +243,9 @@ class Panel:
             self._lines = fresh_lines + self._lines[existing_slice]
             self._styled = fresh_styled + self._styled[existing_slice]
 
+        # ensure this panel is marked as dirty after a shift
+        self.set_rect(*self.rect)
+
     def shift_up(self, n: int = 1) -> None:
         validation.greater_than_x("Panel.shift_up param n", n, 0)
         self._shift_data(-n)

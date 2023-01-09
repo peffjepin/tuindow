@@ -11,6 +11,7 @@ from . import _backend
 from .buffers import Panel
 from .window import Window
 from .cursor import Cursor
+from .cursor import Overscroll
 
 
 __all__ = (
@@ -47,7 +48,8 @@ __all__ = (
     "REVERSE",
     "STANDOUT",
     "UNDERLINE",
-    "PRINTABLE"
+    "PRINTABLE",
+    "Overscroll"
 )
 
 PRINTABLE = set(c for c in string.printable)
