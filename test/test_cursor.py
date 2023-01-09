@@ -1,9 +1,12 @@
+import pytest
+
 from .conftest import params
 
 from tuindow.cursor import Cursor as LibCursor
+from tuindow.cursor import Overscroll
 
 
-def Cursor(initial_value, index=0, line=0):
+def Cursor(initial_value="", index=0, line=0):
     value = initial_value
 
     def read(line):
@@ -325,14 +328,32 @@ def test_cursor_line_modification():
     assert cursor.line == 1000
 
 
-def test_cursor_resets_index_when_line_changes():
-    cursor = Cursor("abc", index=3)
-
-    assert cursor.line == 0
-    assert cursor.index == 3
-
-    cursor.line = 1
-    assert cursor.line == 1
+def test_cursor_preserves_and_clamps_index_when_line_changes():
+    lines = [
+        "abcdef",
+        "abcde",
+        "abcd",
+        "abcd",
+        "abcde",
+        "a",
+        "",
+    ]
+    cursor = MultilineCursor(lines, index=6, line=0)
+    cursor.down()
+    assert cursor.index == 5
+    cursor.down()
+    assert cursor.index == 4
+    cursor.down()
+    assert cursor.index == 4
+    cursor.down()
+    assert cursor.index == 4
+    cursor.down()
+    assert cursor.index == 1
+    cursor.down()
+    assert cursor.index == 0
+    cursor.up()
+    assert cursor.index == 0
+    cursor.up()
     assert cursor.index == 0
 
 
@@ -413,3 +434,70 @@ def test_pan(length, index, expected):
     cursor = Cursor("01234", index=index)
 
     assert cursor.pan(length) == expected
+
+
+def test_up():
+    cursor = Cursor(line=3)
+
+    cursor.up()
+
+    assert cursor.line == 2
+
+
+def test_up_many():
+    cursor = Cursor(line=3)
+
+    cursor.up(3)
+
+    assert cursor.line == 0
+
+
+def test_up_negative(expect_error):
+    cursor = Cursor(line=3)
+
+    with expect_error(ValueError):
+        cursor.up(-2)
+
+
+def test_up_overflow(expect_error):
+    cursor = Cursor(line=3)
+
+    with pytest.raises(Overscroll) as excinfo:
+        cursor.up(7)
+
+    assert excinfo.value.amount == 4
+    assert cursor.line == 0
+
+
+def test_down():
+    cursor = Cursor(line=3)
+
+    cursor.down()
+
+    assert cursor.line == 4
+
+
+def test_down_many():
+    cursor = Cursor(line=3)
+
+    cursor.down(3)
+
+    assert cursor.line == 6
+
+
+def test_down_negative():
+    cursor = Cursor(line=3)
+
+    with pytest.raises(ValueError):
+        cursor.down(-3)
+
+
+def test_down_overflow():
+    cursor = Cursor(line=3)
+    cursor.maxline = 4
+
+    with pytest.raises(Overscroll) as excinfo:
+        cursor.down(3)
+
+    assert excinfo.value.amount == 2
+    assert cursor.line == cursor.maxline

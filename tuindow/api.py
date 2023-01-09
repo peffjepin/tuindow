@@ -1,5 +1,6 @@
 import contextlib
 import time
+import string
 
 from typing import Generator
 from typing import Callable
@@ -46,7 +47,10 @@ __all__ = (
     "REVERSE",
     "STANDOUT",
     "UNDERLINE",
+    "PRINTABLE"
 )
+
+PRINTABLE = set(c for c in string.printable)
 
 BACKSPACE = _backend.SpecialKeys.BACKSPACE
 DELETE = _backend.SpecialKeys.DELETE

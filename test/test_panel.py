@@ -4,6 +4,7 @@ import pytest
 
 from tuindow import Panel
 from tuindow import structs
+from tuindow import cursor
 
 
 @pytest.fixture
@@ -285,3 +286,100 @@ def test_cursor():
 
     assert panel.readline(0) == "abc"
     assert panel.readline(1) == "def"
+
+
+def test_cursor_raises_overscroll_errors_by_default():
+    panel = Panel(0, 0, 10, 2)
+
+    with pytest.raises(cursor.Overscroll) as excinfo:
+        panel.cursor.down(4)
+
+    assert excinfo.value.amount == 3
+
+
+def test_cursor_raises_overscroll_errors_by_default_across_size_change():
+    panel = Panel(0, 0, 10, 2)
+    panel.set_rect(0, 0, 10, 3)
+
+    with pytest.raises(cursor.Overscroll) as excinfo:
+        panel.cursor.down(4)
+
+    assert excinfo.value.amount == 2
+
+
+def test_shift_up():
+    panel = Panel(0, 0, 10, 3)
+    panel.writeline(0, "0")
+    panel.writeline(1, "1")
+    panel.writeline(2, "2")
+
+    panel.shift_up()
+
+    assert panel.readline(0) == "1"
+    assert panel.readline(1) == "2"
+    assert panel.readline(2) == ""
+
+
+def test_shift_up_multiple():
+    panel = Panel(0, 0, 10, 3)
+    panel.writeline(0, "0")
+    panel.writeline(1, "1")
+    panel.writeline(2, "2")
+
+    panel.shift_up(2)
+
+    assert panel.readline(0) == "2"
+    assert panel.readline(1) == ""
+    assert panel.readline(2) == ""
+
+
+def test_shift_up_overflow():
+    panel = Panel(0, 0, 10, 3)
+    panel.writeline(0, "0")
+    panel.writeline(1, "1")
+    panel.writeline(2, "2")
+
+    panel.shift_up(1000)
+
+    assert panel.readline(0) == ""
+    assert panel.readline(1) == ""
+    assert panel.readline(2) == ""
+
+
+def test_shift_down():
+    panel = Panel(0, 0, 10, 3)
+    panel.writeline(0, "0")
+    panel.writeline(1, "1")
+    panel.writeline(2, "2")
+
+    panel.shift_down()
+
+    assert panel.readline(0) == ""
+    assert panel.readline(1) == "0"
+    assert panel.readline(2) == "1"
+
+
+def test_shift_down_multiple():
+    panel = Panel(0, 0, 10, 3)
+    panel.writeline(0, "0")
+    panel.writeline(1, "1")
+    panel.writeline(2, "2")
+
+    panel.shift_down(2)
+
+    assert panel.readline(0) == ""
+    assert panel.readline(1) == ""
+    assert panel.readline(2) == "0"
+
+
+def test_shift_down_overflow():
+    panel = Panel(0, 0, 10, 3)
+    panel.writeline(0, "0")
+    panel.writeline(1, "1")
+    panel.writeline(2, "2")
+
+    panel.shift_down(1000)
+
+    assert panel.readline(0) == ""
+    assert panel.readline(1) == ""
+    assert panel.readline(2) == ""

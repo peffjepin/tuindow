@@ -125,10 +125,10 @@ class Line:
 class Panel:
     available: int = -1
     cursor: cursor.Cursor
-    _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
-    _lines: Tuple[Line, ...] = ()
+    _lines: List[Line]
     _style: structs.Style
     _styled: List[bool]
+    _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
 
     def __init__(
         self,
@@ -139,6 +139,7 @@ class Panel:
         default_style: Optional[structs.Style] = None,
         **kwargs,
     ) -> None:
+        self._lines = []
         self._styled = []
         self._style = (
             default_style
@@ -201,20 +202,6 @@ class Panel:
         assert index is not None
         self.writeline(index, value)
 
-    def _linegen(
-        self, current_lines: Optional[Iterable[Line]] = None
-    ) -> Generator[Line, None, None]:
-        if current_lines is not None:
-            for ln in current_lines:
-                ln.length = self.width
-                yield ln
-        if isinstance(self._style, structs.Style):
-            while 1:
-                yield Line(self.width, self._style)
-        else:
-            while 1:
-                yield Line(self.width, **self._style)
-
     @property
     def first_available(self) -> Optional[int]:
         for i, ln in enumerate(self):
@@ -239,6 +226,31 @@ class Panel:
     def rect(self) -> structs.Rect:
         return self._rect
 
+    def _shift_data(self, n: int) -> None:
+        if abs(n) >= self.height:
+            self._lines = [self._default_line() for _ in range(self.height)]
+            self._styled = [False] * self.height
+
+        fresh_lines = [self._default_line() for _ in range(abs(n))]
+        fresh_styled = [False] * abs(n)
+
+        if n < 0:
+            existing_slice = slice(abs(n), len(self._lines), 1)
+            self._lines = self._lines[existing_slice] + fresh_lines
+            self._styled = self._styled[existing_slice] + fresh_styled
+        elif n > 0:
+            existing_slice = slice(0, self.height-n, 1)
+            self._lines = fresh_lines + self._lines[existing_slice]
+            self._styled = fresh_styled + self._styled[existing_slice]
+
+    def shift_up(self, n: int = 1) -> None:
+        validation.greater_than_x("Panel.shift_up param n", n, 0)
+        self._shift_data(-n)
+
+    def shift_down(self, n: int = 1) -> None:
+        validation.greater_than_x("Panel.shift_down param n", n, 0)
+        self._shift_data(n)
+
     def set_rect(
         self,
         left: int = -1,
@@ -262,22 +274,31 @@ class Panel:
             validation.greater_than_x("Panel.height", rect.height, 0)
 
         self._rect = rect
-        lines = self._linegen(self._lines)
-        self._lines = tuple(next(lines) for _ in range(rect.height))
 
-        if len(self._styled) < rect.height:
-            self._styled.extend([False] * (rect.height - len(self._styled)))
+        if len(self._lines) < rect.height:
+            grow_amount = rect.height-len(self._lines)
+            self._lines.extend(self._default_line()
+                               for _ in range(grow_amount))
+            self._styled.extend([False] * grow_amount)
         else:
+            self._lines = self._lines[:rect.height]
             self._styled = self._styled[: rect.height]
 
-        self.available = sum(1 if ln.data == "" else 0 for ln in self)
-        self.dirty = True
+        for ln in self._lines:
+            if ln.length != rect.width:
+                ln.length = rect.width
 
-    @property
+        self.cursor.maxline = rect.height-1
+        self.available = sum(1 if ln.data == "" else 0 for ln in self)
+
+    def _default_line(self) -> Line:
+        return Line(self.width, style=self._style)
+
+    @ property
     def left(self) -> int:
         return self._rect.left
 
-    @left.setter
+    @ left.setter
     def left(self, value: int) -> None:
         self.set_rect(
             rect=structs.Rect(value, self.top, self.width, self.height)

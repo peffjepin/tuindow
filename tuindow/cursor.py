@@ -5,8 +5,15 @@ from typing import Optional
 from . import validation
 
 
+class Overscroll(Exception):
+    def __init__(self, amount: int):
+        self.amount = amount
+        super().__init__(amount)
+
+
 class Cursor:
     active: Optional["Cursor"]
+    maxline: Optional[int] = None
 
     def __init__(
         self,
@@ -53,9 +60,10 @@ class Cursor:
     @line.setter
     def line(self, value: int) -> None:
         validation.not_negative("Cursor.line", value)
-        if value != self._line:
-            self.index = 0
+        current = self._line
         self._line = value
+        if value != current:
+            self.index = self.index
 
     @property
     def position(self) -> Tuple[int, int]:
@@ -115,8 +123,35 @@ class Cursor:
         return data[start: start + display_length]
 
     def left(self, n: int = 1) -> None:
+        validation.not_negative("Cursor.left n", n)
         self._index = max(0, self._index - n)
 
     def right(self, n: int = 1) -> None:
+        validation.not_negative("Cursor.right n", n)
         current = self._readline()
         self._index = min(len(current), self._index + n)
+
+    def up(self, n: int = 1) -> None:
+        validation.not_negative("Cursor.up n", n)
+        newline = self.line - n
+        if newline < 0:
+            over = 0 - newline
+            self.line = 0
+            raise Overscroll(over)
+        else:
+            self.line = newline
+
+    def down(self, n: int = 1) -> None:
+        validation.not_negative("Cursor.down n", n)
+
+        if self.maxline is None:
+            self.line += n
+            return
+
+        newline = self.line + n
+        over = newline - self.maxline
+        if over > 0:
+            self.line = self.maxline
+            raise Overscroll(over)
+        else:
+            self.line = newline
