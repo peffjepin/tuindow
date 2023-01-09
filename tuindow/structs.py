@@ -1,5 +1,7 @@
 from typing import NamedTuple
 from typing import Tuple
+from typing import Optional
+from typing import Union
 
 
 class Rect(NamedTuple):
@@ -65,6 +67,27 @@ class Padding(NamedTuple):
 class Style(NamedTuple):
     padding: Padding = Padding.calculate((" ", " "), (0, 0))
     fill: str = " "
+    attributes: int = 0
+
+    @classmethod
+    def from_keywords(
+        cls,
+        fill: str = " ",
+        padding_fills: Optional[Union[str, Tuple[str, str]]] = None,
+        padding: Union[int, Tuple[int, int]] = (0, 0),
+        attributes: int = 0
+    ) -> "Style":
+        if padding_fills is None:
+            padding_fills = (fill, fill)
+        elif isinstance(padding_fills, str):
+            padding_fills = (padding_fills, padding_fills)
+        if isinstance(padding, int):
+            padding = (padding, padding)
+        return cls(
+            padding=Padding.calculate(padding_fills, padding),
+            fill=fill,
+            attributes=attributes
+        )
 
     def calculate_pads(self, string: str, max_length: int) -> Tuple[str, str]:
         final_display_length = max_length - sum(map(len, self.padding.pads))

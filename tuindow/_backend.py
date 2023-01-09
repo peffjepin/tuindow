@@ -13,6 +13,15 @@ import collections
 from curses import ascii
 
 
+class Attribute:
+    BLINK = curses.A_BLINK
+    BOLD = curses.A_BOLD
+    DIM = curses.A_DIM
+    REVERSE = curses.A_REVERSE
+    STANDOUT = curses.A_STANDOUT
+    UNDERLINE = curses.A_UNDERLINE
+
+
 class SpecialKeys(enum.Enum):
     BACKSPACE = "BACKSPACE"
     ESCAPE = "ESCAPE"
@@ -122,9 +131,9 @@ class Instance:
         cache.extend((k for k in self.keys))
         self._cached_keys = cache
 
-    def write_text(self, x: int, y: int, value: str) -> None:
+    def write_text(self, x: int, y: int, value: str, *args) -> None:
         try:
-            self._stdscr.addstr(y, x, value)
+            self._stdscr.addstr(y, x, value, *args)
         except curses.error as exc:
             # writing the last character in the window causes an error
             # because it places the cursor out of bounds and we are
@@ -141,6 +150,7 @@ class Instance:
                     f"    {self!r}\n"
                     f"    write_location={x=!r}, {y=!r}\n"
                     f"    {value=!r}\n"
+                    f"    {args=!r}\n"
                     f"    internal error: {str(exc)}"
                 )
 

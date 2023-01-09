@@ -1,15 +1,10 @@
-import contextlib
-import sys
-
 from typing import Iterator
 from typing import Generator
 from typing import Iterable
 from typing import Tuple
 from typing import Optional
 from typing import Union
-from typing import Dict
 from typing import List
-from typing import Any
 
 from . import structs
 from . import validation
@@ -29,70 +24,20 @@ class Line:
         length: int,
         style: Optional[structs.Style] = None,
         data: str = "",
-        fill: str = " ",
-        padding: Union[int, Tuple[int, int]] = (0, 0),
-        padding_fills: Optional[Union[str, Tuple[str, str]]] = None,
+        **kwargs
     ) -> None:
-        with self._wait_update_display():
-            self.data = data
-            self.length = length
-            if style is not None:
-                self.style = style
-            else:
-                self.format(
-                    fill=fill, padding=padding, padding_fills=padding_fills
-                )
-
-    @contextlib.contextmanager
-    def _wait_update_display(self) -> Iterator[None]:
-        """
-        avoids recalculating display with each state change until context exits
-        """
-
-        implementation = self._update_display
-        called = 0
-
-        def patch() -> None:
-            nonlocal called
-            called += 1
-
-        setattr(self, "_update_display", patch)
-        yield
-        setattr(self, "_update_display", implementation)
-
-        if called:
-            self._update_display()
+        self.length = length
+        self.data = data
+        if style is not None:
+            self.style = style
+        else:
+            self.style = structs.Style.from_keywords(**kwargs)
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(length={self.length!r}, data={self.data!r}, "
             f"fill={self.fill!r}, padding={self.padding!r}, padding_fills={self.padding_fills!r})"
         )
-
-    def format(
-        self,
-        fill: str = " ",
-        padding: Union[int, Tuple[int, int]] = (0, 0),
-        padding_fills: Optional[Union[str, Tuple[str, str]]] = None,
-    ) -> None:
-        if padding_fills is None:
-            padding_fills = fill
-        self.style = structs.Style(
-            fill=fill,
-            padding=structs.Padding.calculate(
-                fills=(
-                    padding_fills
-                    if isinstance(padding_fills, tuple)
-                    else (padding_fills, padding_fills)
-                ),
-                values=(
-                    padding
-                    if isinstance(padding, tuple)
-                    else (padding, padding)
-                ),
-            ),
-        )
-        self._update_display()
 
     @property
     def style(self) -> structs.Style:
@@ -116,15 +61,10 @@ class Line:
     def padding_fills(
         self, value: Optional[Union[str, Tuple[str, str]]]
     ) -> None:
-        if value is None:
-            value = (self.fill, self.fill)
-        elif isinstance(value, str):
-            value = (value, value)
-        self.style = structs.Style(
+        self.style = structs.Style.from_keywords(
             fill=self.fill,
-            padding=structs.Padding.calculate(
-                fills=value, values=self.padding
-            ),
+            padding=self.padding,
+            padding_fills=value,
         )
 
     @property
@@ -133,14 +73,8 @@ class Line:
 
     @padding.setter
     def padding(self, value: Union[int, Tuple[int, int]]) -> None:
-        if isinstance(value, int):
-            value = (value, value)
-        self.style = structs.Style(
-            fill=self._style.fill,
-            padding=structs.Padding.calculate(
-                fills=self.padding_fills, values=value
-            ),
-        )
+        self.style = structs.Style.from_keywords(
+            fill=self.fill, padding=value, padding_fills=self.padding_fills)
 
     @property
     def fill(self) -> str:
@@ -148,7 +82,8 @@ class Line:
 
     @fill.setter
     def fill(self, value: str) -> None:
-        self.style = structs.Style(fill=value, padding=self.style.padding)
+        self.style = structs.Style.from_keywords(
+            fill=value, padding=self.padding, padding_fills=self.padding_fills)
 
     @property
     def data(self) -> str:
@@ -192,36 +127,37 @@ class Panel:
     cursor: cursor.Cursor
     _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
     _lines: Tuple[Line, ...] = ()
-    _style: Union[structs.Style, Dict[Any, Any]]
+    _style: structs.Style
     _styled: List[bool]
 
     def __init__(
         self,
         left: int = 0,
         top: int = 0,
-        width: int = sys.maxsize,
-        height: int = sys.maxsize,
+        width: int = -1,
+        height: int = -1,
         default_style: Optional[structs.Style] = None,
         **kwargs,
     ) -> None:
         self._styled = []
-        self._style = default_style if default_style is not None else kwargs
-
-        def cursor_readline(ln: int) -> str:
-            return self[ln].data
-
-        def cursor_writeline(ln: int, value: str) -> None:
-            self[ln].data = value
+        self._style = (
+            default_style
+            if default_style is not None
+            else structs.Style.from_keywords(**kwargs)
+        )
 
         self.cursor = cursor.Cursor(
             index=0,
             line=0,
-            readline=cursor_readline,
-            writeline=cursor_writeline,
+            readline=self.readline,
+            writeline=self.writeline,
         )
 
-        if width == sys.maxsize or height == sys.maxsize:
+        if width == -1 or height == -1:
+            # user may want to create panels before initializing the screen
+            # and only layout the panels later from a resize callback
             return
+
         self.set_rect(rect=structs.Rect(left, top, width, height))
 
     def __repr__(self) -> str:
@@ -253,7 +189,7 @@ class Panel:
 
     def styleline(self, index: int, style=None, **kwargs) -> None:
         if style is None:
-            self[index].format(**kwargs)
+            self[index].style = structs.Style.from_keywords(**kwargs)
         else:
             self[index].style = style
         self._styled[index] = True
@@ -291,16 +227,13 @@ class Panel:
     ) -> None:
         if style is not None:
             self._style = style
-            for styled, ln in zip(self._styled, self._lines):
-                if styled:
-                    continue
-                ln.style = style
         else:
-            self._style = kwargs
-            for styled, ln in zip(self._styled, self._lines):
-                if styled:
-                    continue
-                ln.format(**kwargs)
+            self._style = structs.Style.from_keywords(**kwargs)
+
+        for styled, ln in zip(self._styled, self._lines):
+            if styled:
+                continue
+            ln.style = self._style
 
     @property
     def rect(self) -> structs.Rect:

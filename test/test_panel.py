@@ -42,14 +42,28 @@ def test_modify_top_less_than_0(expect_error):
 
 @params("width", 0, -1)
 def test_panel_width_less_than_1(width, expect_error):
+    p = Panel(1, 1, 1, 1)
     with expect_error(ValueError, "greater than 0", "width", str(width)):
-        Panel(1, 1, width, 1)
+        p.width = width
 
 
 @params("height", 0, -1)
 def test_panel_height_less_than_1(height, expect_error):
+    p = Panel(1, 1, 1, 1)
     with expect_error(ValueError, "greater than 0", "height", str(height)):
-        Panel(1, 1, 1, height)
+        p.height = height
+
+
+def test_special_width_height_initial_values_negative_1_means_dont_initialize_yet(expect_error):
+    p = Panel(0, 0, -1, -1)
+
+    # the panel is currently invalid so if we initialize it by updaing it's rect
+    # we must set width in height or be met with an error
+    with expect_error(ValueError, "width", "height", "greater than 0"):
+        p.left = 0
+
+    # if we set the entire rect using valid width and height everything should be ok
+    p.set_rect(0, 0, 1, 1)
 
 
 @params(

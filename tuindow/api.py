@@ -5,7 +5,7 @@ from typing import Generator
 from typing import Callable
 from typing import Optional
 
-from . import _curses
+from . import _backend
 
 from .buffers import Panel
 from .window import Window
@@ -39,28 +39,43 @@ __all__ = (
     "LEFT",
     "RIGHT",
     "UP",
+    "Attribute",
+    "BLINK",
+    "BOLD",
+    "DIM",
+    "REVERSE",
+    "STANDOUT",
+    "UNDERLINE",
 )
 
-BACKSPACE = _curses.SpecialKeys.BACKSPACE
-DELETE = _curses.SpecialKeys.DELETE
-ESCAPE = _curses.SpecialKeys.ESCAPE
-F0 = _curses.SpecialKeys.F0
-F1 = _curses.SpecialKeys.F1
-F2 = _curses.SpecialKeys.F2
-F3 = _curses.SpecialKeys.F3
-F4 = _curses.SpecialKeys.F4
-F5 = _curses.SpecialKeys.F5
-F6 = _curses.SpecialKeys.F6
-F7 = _curses.SpecialKeys.F7
-F8 = _curses.SpecialKeys.F8
-F9 = _curses.SpecialKeys.F9
-F10 = _curses.SpecialKeys.F10
-F11 = _curses.SpecialKeys.F11
-F12 = _curses.SpecialKeys.F12
-DOWN = _curses.SpecialKeys.DOWN
-LEFT = _curses.SpecialKeys.LEFT
-RIGHT = _curses.SpecialKeys.RIGHT
-UP = _curses.SpecialKeys.UP
+BACKSPACE = _backend.SpecialKeys.BACKSPACE
+DELETE = _backend.SpecialKeys.DELETE
+ESCAPE = _backend.SpecialKeys.ESCAPE
+F0 = _backend.SpecialKeys.F0
+F1 = _backend.SpecialKeys.F1
+F2 = _backend.SpecialKeys.F2
+F3 = _backend.SpecialKeys.F3
+F4 = _backend.SpecialKeys.F4
+F5 = _backend.SpecialKeys.F5
+F6 = _backend.SpecialKeys.F6
+F7 = _backend.SpecialKeys.F7
+F8 = _backend.SpecialKeys.F8
+F9 = _backend.SpecialKeys.F9
+F10 = _backend.SpecialKeys.F10
+F11 = _backend.SpecialKeys.F11
+F12 = _backend.SpecialKeys.F12
+DOWN = _backend.SpecialKeys.DOWN
+LEFT = _backend.SpecialKeys.LEFT
+RIGHT = _backend.SpecialKeys.RIGHT
+UP = _backend.SpecialKeys.UP
+
+Attribute = _backend.Attribute
+BLINK = _backend.Attribute.BLINK
+BOLD = _backend.Attribute.BOLD
+DIM = _backend.Attribute.DIM
+REVERSE = _backend.Attribute.REVERSE
+STANDOUT = _backend.Attribute.STANDOUT
+UNDERLINE = _backend.Attribute.UNDERLINE
 
 
 class Clock:
@@ -99,7 +114,7 @@ class Clock:
         self._interval = 1 / value
 
 
-_instance: Optional[_curses.Instance] = None
+_instance: Optional[_backend.Instance] = None
 _clock: Clock
 _window: Window
 _ResizeCallback = Callable[[int, int], None]
@@ -133,7 +148,7 @@ def init(on_resize: _ResizeCallback, tps=144):
         _window.resize(0, 0, width, height)
         on_resize(width, height)
 
-    _instance = _curses.Instance(resize_callback)
+    _instance = _backend.Instance(resize_callback)
     with _instance:
         resize_callback(*_instance.size)
         yield
@@ -154,7 +169,7 @@ def draw(*panels: Panel) -> None:
     size = _instance.size
     try:
         _unsafe_draw(*panels)
-    except _curses.CursesError:
+    except _backend.CursesError:
         if _instance.size != size:
             _instance.cache_pending_keys()
             return draw(*panels)
@@ -169,7 +184,8 @@ def _unsafe_draw(*panels: Panel) -> None:
         dirty = _window.draw(panel.rect)
         for i, line in enumerate(panel):
             if dirty or line.dirty:
-                _instance.write_text(panel.left, panel.top + i, line.display)
+                _instance.write_text(
+                    panel.left, panel.top + i, line.display, line.style.attributes)
             line.dirty = False
 
         if Cursor.active is panel.cursor:
@@ -209,7 +225,9 @@ def _handle_active_cursor(panel: Panel, cursor: Cursor) -> None:
     cursor_y = cursor.line + panel.top
 
     _instance.write_text(
-        panel.left, cursor_y, pads[0] + panned_display + pads[1]
+        panel.left,
+        cursor_y, pads[0] + panned_display + pads[1],
+        ln.style.attributes
     )
     _instance.draw_cursor(cursor_x, cursor_y)
 
