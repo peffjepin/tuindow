@@ -122,8 +122,6 @@ class Style(NamedTuple):
         """
         Initializes a Style object from keywords.
 
-        padding:
-            see: tuindow.structs.Padding
         fill:
             the fill character to use when there is extra space leftover
             must be a string of length 1
