@@ -20,6 +20,7 @@ class Editor:
     def __init__(self, filename):
         # panels are not useful until we set their rects
         # but we don't know how large the rects should be at this moment
+
         self.main_panel = tuindow.Panel(padding=1)
         self.line_number_panel = tuindow.Panel(
             padding=(1, -1), attributes=tuindow.DIM | tuindow.YELLOW
@@ -37,8 +38,7 @@ class Editor:
         if not self.lines:
             self.lines = [""]
 
-        self.cursor = self.main_panel.cursor
-        self.offset = 0
+        self.display_offset = 0
 
     def layout(self, width: int, height: int):
         # the library calls out to us whenever it gets updated information
@@ -78,21 +78,50 @@ class Editor:
         self.update_line_numbers()
         self.update_editor_window()
 
+    def update_editor_window(self):
+        for i in range(self.main_panel.height):
+            line_index = i + self.display_offset
+            if line_index < len(self.lines):
+                self.main_panel.writeln(i, self.lines[line_index])
+            else:
+                self.main_panel.clearln(i)
+
+    def update_help_display(self):
+        self.help_panel.writeln(2, self.filename)
+        if self.mode == Mode.EDIT:
+            self.help_panel.writeln(1, "EDIT MODE:   " + self.EDIT_HELP)
+        else:
+            self.help_panel.writeln(1, "COMMAND MODE:   " + self.COMMAND_HELP)
+
+    def update_line_numbers(self):
+        for i in range(self.line_number_panel.height):
+            number = i + 1 + self.display_offset
+            if number > len(self.lines):
+                self.line_number_panel.clearln(i)
+            else:
+                self.line_number_panel.writeln(i, str(number))
+
+    @property
+    def file_line(self) -> int:
+        return self.main_panel.cursor.line + self.display_offset
+
     def sync_cursor_line(self):
-        # The cursor writes data directly into the Line buffer which
+        # The cursor writes data directly into the Line buffers which
         # represent screen space. This data will move as the cursor
         # moves and may even be lost as we add more lines to the file.
-
+        #
         # We will have to persist line data on our own aswell.
         # If we call this after all state changes we will stay synced.
-        while self.absolute_line > len(self.lines) - 1:
+
+        while self.file_line > len(self.lines) - 1:
             self.lines.append("")
-        self.lines[self.absolute_line] = self.cursor.data
+        self.lines[self.file_line] = self.main_panel.cursor.data
 
     def write_from_file_data(self, display_index: int) -> None:
         # Writes a line we have cached away in self.lines back onto the display
         # at the given display index
-        line_index = self.offset + display_index
+
+        line_index = self.display_offset + display_index
         if line_index < len(self.lines):
             self.main_panel.writeln(display_index, self.lines[line_index])
         else:
@@ -100,25 +129,26 @@ class Editor:
 
     def up(self) -> None:
         try:
-            self.cursor.up()
+            self.main_panel.cursor.up()
         except tuindow.Overscroll:
             self.handle_overscroll(-1)
 
     def down(self) -> None:
         try:
-            self.cursor.down()
+            self.main_panel.cursor.down()
         except tuindow.Overscroll:
             self.handle_overscroll(1)
 
     def handle_overscroll(self, y: int):
         # y < 0 for scroll_up
         # y > 0 for scroll_down
-        if y < 0 and self.absolute_line > 0:
-            self.offset -= 1
+
+        if y < 0 and self.file_line > 0:
+            self.display_offset -= 1
             self.main_panel.shift_down()
             self.write_from_file_data(0)
         elif y > 0:
-            self.offset += 1
+            self.display_offset += 1
             self.main_panel.shift_up()
             self.write_from_file_data(self.main_panel.height - 1)
         self.update_line_numbers()
@@ -134,25 +164,25 @@ class Editor:
 
     def insert_line(self, display_index: int, value: str) -> None:
         self.main_panel.insertln(display_index, value)
-        self.lines.insert(self.offset + display_index, value)
+        self.lines.insert(self.display_offset + display_index, value)
 
     def delete_cursor_line(self) -> None:
         self.main_panel.deleteln(self.main_panel.cursor.line)
-        del self.lines[self.absolute_line]
+        del self.lines[self.file_line]
 
     def backspace(self) -> None:
-        if self.cursor.index > 0:
-            self.cursor.backspace()
+        if self.main_panel.cursor.index > 0:
+            self.main_panel.cursor.backspace()
             self.sync_cursor_line()
             return
-        elif self.absolute_line == 0:
+        elif self.file_line == 0:
             return
 
         # following is the case when backspace is pressed at
         # the very beginning of the line and we should wrap up
 
         # delete line and shift data
-        trailing_line = self.cursor.consume_line()
+        trailing_line = self.main_panel.cursor.consume_line()
         self.delete_cursor_line()
 
         # if the file extends beyond the screen then we have to fill
@@ -162,7 +192,7 @@ class Editor:
         # paste remainder to end of previous line (remembering the proper index)
         self.up()
         self.main_panel.cursor.index = -1
-        index = self.cursor.index
+        index = self.main_panel.cursor.index
         self.insert(trailing_line)
         self.main_panel.cursor.index = index
 
@@ -171,32 +201,6 @@ class Editor:
         self.insert_line(self.main_panel.cursor.line + 1, remainder_of_line)
         self.down()
         self.main_panel.cursor.index = 0
-
-    def update_editor_window(self):
-        for i in range(self.main_panel.height):
-            line_index = i + self.offset
-            if line_index < len(self.lines):
-                self.main_panel.writeln(i, self.lines[line_index])
-            else:
-                self.main_panel.clearln(i)
-
-    def update_help_display(self):
-        if self.mode == Mode.EDIT:
-            self.help_panel.writeln(1, "EDIT MODE:   " + self.EDIT_HELP)
-        else:
-            self.help_panel.writeln(1, "COMMAND MODE:   " + self.COMMAND_HELP)
-
-    def update_line_numbers(self):
-        for i in range(self.line_number_panel.height):
-            number = i + 1 + self.offset
-            if number > len(self.lines):
-                self.line_number_panel.clearln(i)
-            else:
-                self.line_number_panel.writeln(i, str(number))
-
-    @property
-    def absolute_line(self) -> int:
-        return self.cursor.line + self.offset
 
     def handle_key(self, key: str):
         if self.mode == Mode.EDIT:
@@ -207,12 +211,12 @@ class Editor:
                 self.main_panel.cursor.right()
 
             elif key == tuindow.UP:
-                if self.absolute_line == 0:
+                if self.file_line == 0:
                     return
                 self.up()
 
             elif key == tuindow.DOWN:
-                if self.absolute_line == len(self.lines) - 1:
+                if self.file_line == len(self.lines) - 1:
                     return
                 self.down()
 
@@ -252,7 +256,7 @@ class Editor:
                 self.up()
 
             elif key == tuindow.DOWN or key == "j":
-                if len(self.lines) == self.absolute_line + 1:
+                if len(self.lines) == self.file_line + 1:
                     return
                 self.down()
 
