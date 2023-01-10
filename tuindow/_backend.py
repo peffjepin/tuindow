@@ -1,3 +1,7 @@
+"""
+All curses related code
+"""
+
 from typing import Deque
 from typing import Callable
 from typing import Generator
@@ -14,6 +18,13 @@ import collections
 from curses import ascii
 
 
+# Store custom attributes for this library in higher order bits.
+# These will be processed before issuing draw commands
+#
+# Using this method we can specify attributes like color before the
+# display has been initialized and handle passing in the correct value
+# at draw time.
+
 _ATTRIBUTE_BITS_START = 1 << 64
 _CURSES_ATTRIBUTE_BITMASK = _ATTRIBUTE_BITS_START - 1
 
@@ -28,7 +39,7 @@ def _new_attribute_bit():
     return new_bit
 
 
-class Attribute:
+class AttributeBit:
     BLINK = curses.A_BLINK
     BOLD = curses.A_BOLD
     DIM = curses.A_DIM
@@ -36,9 +47,6 @@ class Attribute:
     STANDOUT = curses.A_STANDOUT
     UNDERLINE = curses.A_UNDERLINE
 
-    # initialization not available until curses is initialized
-    # so I'm storing color attributes in higher order bits to
-    # be converted to curses color pairs at draw time
     RED = _new_attribute_bit()
     GREEN = _new_attribute_bit()
     YELLOW = _new_attribute_bit()
@@ -48,6 +56,12 @@ class Attribute:
 
 
 class SpecialKeys(enum.Enum):
+    """
+    Keys that aren't represented by their corresponding single character.
+
+    TODO: This could be expanded, but suits my purposes currently
+    """
+
     BACKSPACE = "BACKSPACE"
     ESCAPE = "ESCAPE"
     F0 = "F0"
@@ -103,6 +117,15 @@ class CursesError(Exception):
 
 
 class _ColorPairIndex(enum.Enum):
+    """
+    curses.color_pair( ... ) indices for color pairs
+    that the library sets up by default.
+
+    All of these pairs are against a black background.
+
+    White on black is the default so it's not listed.
+    """
+
     RED = 1
     GREEN = 2
     YELLOW = 3
@@ -112,6 +135,10 @@ class _ColorPairIndex(enum.Enum):
 
 
 class Instance:
+    """
+    An object that encapsules curses funtionality.
+    """
+
     _stdscr: curses.window
     _resize_callback: Callable[[int, int], None]
     _cached_keys: Optional[Deque[str]]
@@ -125,6 +152,10 @@ class Instance:
         return f"<Curses instance  size={self.size!r}>"
 
     def __enter__(self) -> "Instance":
+        """
+        Initializes curses and sets up some default color pairs.
+        """
+
         os.environ.setdefault("ESCDELAY", "100")
         self._stdscr = curses.initscr()
         self._stdscr.keypad(True)
@@ -164,6 +195,10 @@ class Instance:
         return self
 
     def __exit__(self, *_) -> None:
+        """
+        Tears down curses and restores terminal to usable state
+        """
+
         self._stdscr.keypad(False)
         self._stdscr.nodelay(False)
         curses.echo()
@@ -173,6 +208,10 @@ class Instance:
 
     @property
     def keys(self) -> Generator[str, None, None]:
+        """
+        Polls for keys non-blocking and yields them when present.
+        """
+
         while self._cached_keys:
             yield self._cached_keys.popleft()
         while (keycode := self._stdscr.getch()) != -1:
@@ -183,38 +222,45 @@ class Instance:
 
     @property
     def size(self) -> Tuple[int, int]:
+        """
+        Returns the size of the window measured in characters
+        """
+
         height, width = self._stdscr.getmaxyx()
         return width, height
 
     def cache_pending_keys(self) -> None:
+        """
+        Caches all pending key presses until next self.keys access.
+
+        NOTE: triggers resize callback if resize encountered in keys
+        """
+
         cache = self._cached_keys or collections.deque()
         self._cached_keys = None
         cache.extend((k for k in self.keys))
         self._cached_keys = cache
 
-    def _process_attributes(self, attributes: int) -> int:
-        cleaned_attributes = attributes & _CURSES_ATTRIBUTE_BITMASK
-        if attributes & Attribute.RED:
-            cleaned_attributes |= curses.color_pair(_ColorPairIndex.RED.value)
-        elif attributes & Attribute.GREEN:
-            cleaned_attributes |= curses.color_pair(
-                _ColorPairIndex.GREEN.value
-            )
-        elif attributes & Attribute.YELLOW:
-            cleaned_attributes |= curses.color_pair(
-                _ColorPairIndex.YELLOW.value
-            )
-        elif attributes & Attribute.BLUE:
-            cleaned_attributes |= curses.color_pair(_ColorPairIndex.BLUE.value)
-        elif attributes & Attribute.MAGENTA:
-            cleaned_attributes |= curses.color_pair(
-                _ColorPairIndex.MAGENTA.value
-            )
-        elif attributes & Attribute.CYAN:
-            cleaned_attributes |= curses.color_pair(_ColorPairIndex.CYAN.value)
-        return cleaned_attributes
+    def update_display(self) -> None:
+        self._stdscr.refresh()
+
+    def draw_cursor(self, x: int, y: int) -> None:
+        if not self._cursor_enabled:
+            curses.curs_set(1)
+            self._cursor_enabled = True
+        self._stdscr.move(y, x)
+
+    def disable_cursor(self) -> None:
+        curses.curs_set(0)
+        self._cursor_enabled = False
 
     def write_text(self, x: int, y: int, value: str, attributes: int) -> None:
+        """
+        Writes the given string to the screen at (x, y) where (0, 0) is the top left.
+        Not displayed until display is updated.
+
+        Raises CursesError when write fails.
+        """
         try:
             self._stdscr.addstr(
                 y, x, value, self._process_attributes(attributes)
@@ -239,15 +285,24 @@ class Instance:
                     f"    internal error: {str(exc)}"
                 )
 
-    def update_display(self) -> None:
-        self._stdscr.refresh()
-
-    def draw_cursor(self, x: int, y: int) -> None:
-        if not self._cursor_enabled:
-            curses.curs_set(1)
-            self._cursor_enabled = True
-        self._stdscr.move(y, x)
-
-    def disable_cursor(self) -> None:
-        curses.curs_set(0)
-        self._cursor_enabled = False
+    def _process_attributes(self, attributes: int) -> int:
+        cleaned_attributes = attributes & _CURSES_ATTRIBUTE_BITMASK
+        if attributes & AttributeBit.RED:
+            cleaned_attributes |= curses.color_pair(_ColorPairIndex.RED.value)
+        elif attributes & AttributeBit.GREEN:
+            cleaned_attributes |= curses.color_pair(
+                _ColorPairIndex.GREEN.value
+            )
+        elif attributes & AttributeBit.YELLOW:
+            cleaned_attributes |= curses.color_pair(
+                _ColorPairIndex.YELLOW.value
+            )
+        elif attributes & AttributeBit.BLUE:
+            cleaned_attributes |= curses.color_pair(_ColorPairIndex.BLUE.value)
+        elif attributes & AttributeBit.MAGENTA:
+            cleaned_attributes |= curses.color_pair(
+                _ColorPairIndex.MAGENTA.value
+            )
+        elif attributes & AttributeBit.CYAN:
+            cleaned_attributes |= curses.color_pair(_ColorPairIndex.CYAN.value)
+        return cleaned_attributes

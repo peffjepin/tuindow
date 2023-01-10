@@ -1,3 +1,9 @@
+"""
+Some data structures representing common themes in the package.
+
+This module should not rely on other modules within the package.
+"""
+
 from typing import NamedTuple
 from typing import Tuple
 from typing import Optional
@@ -5,6 +11,11 @@ from typing import Union
 
 
 class Rect(NamedTuple):
+    """
+    A rectangular region within a screen space coordinate system
+    where (0, 0) is the top left corner.
+    """
+
     left: int
     top: int
     width: int
@@ -23,12 +34,9 @@ class Rect(NamedTuple):
 
     def intersects(self, other: "Rect") -> bool:
         """
-        None of the following can be True during a collision:
-            r1 left   >= r2 right
-            r1 top    >= r2 bottom
-            r1 right  <= r2 left
-            r1 bottom <= r2 top
+        Returns true if the two Rects are intersecting.
         """
+
         return (
             self.left < other.right
             and self.top < other.bottom
@@ -37,6 +45,10 @@ class Rect(NamedTuple):
         )
 
     def contains(self, other: "Rect") -> bool:
+        """
+        Returns true if the other rect is entirely contained within this one.
+        """
+
         return (
             other.left >= self.left
             and other.top >= self.top
@@ -46,6 +58,18 @@ class Rect(NamedTuple):
 
 
 class Padding(NamedTuple):
+    """
+    Represents padding on the left and right side of a string.
+
+    fills: (left, right)
+        the single characters used to fill in respective pads
+    values: (left, right)
+        the integer lengths of the respective pads
+        values < 0 are considered variable length padding and treated as weights
+    pads: (left, right)
+        the actual pads described by the former attributes
+    """
+
     fills: Tuple[str, str]
     values: Tuple[int, int]
     pads: Tuple[str, str]
@@ -54,6 +78,11 @@ class Padding(NamedTuple):
     def calculate(
         cls, fills: Tuple[str, str], values: Tuple[int, int]
     ) -> "Padding":
+        """
+        Returns a Padding object who's pads are
+        calculated from the given parameters.
+        """
+
         return cls(
             fills,
             values,
@@ -65,6 +94,19 @@ class Padding(NamedTuple):
 
 
 class Style(NamedTuple):
+    """
+    The cumulative visual configuration for a string to be displayed
+    on the screen.
+
+    padding:
+        see: tuindow.structs.Padding
+    fill:
+        the fill character to use if the data is not long
+        enough to fill it's assigned space
+    attributes:
+        OR'd together tuindow.AttributeBit values
+    """
+
     padding: Padding = Padding.calculate((" ", " "), (0, 0))
     fill: str = " "
     attributes: int = 0
@@ -77,6 +119,25 @@ class Style(NamedTuple):
         padding: Union[int, Tuple[int, int]] = (0, 0),
         attributes: int = 0,
     ) -> "Style":
+        """
+        Initializes a Style object from keywords.
+
+        padding:
+            see: tuindow.structs.Padding
+        fill:
+            the fill character to use when there is extra space leftover
+            must be a string of length 1
+        padding_fills:
+            like fill but used for padding
+            if not given defaults to `fill`
+            a single string (ex padding_fills='!') is interpreted as padding_fills=('!', '!')
+        padding:
+            the length of the (left, right) padding
+            a scalar value (ex padding=1) is interpreted as padding=(1, 1)
+        attributes:
+            OR'd together tuindow.AttributeBit values
+        """
+
         if padding_fills is None:
             padding_fills = (fill, fill)
         elif isinstance(padding_fills, str):
@@ -90,6 +151,11 @@ class Style(NamedTuple):
         )
 
     def calculate_pads(self, string: str, max_length: int) -> Tuple[str, str]:
+        """
+        Returns the (left_pad, right_pad) values for padding `string`
+        assuming a maximum line length of `max_length`.
+        """
+
         final_display_length = max_length - sum(map(len, self.padding.pads))
         remaining = final_display_length - len(string)
 

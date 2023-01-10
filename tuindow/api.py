@@ -1,3 +1,7 @@
+"""
+The public api to be exposed by the package.
+"""
+
 import contextlib
 import time
 import string
@@ -7,6 +11,7 @@ from typing import Callable
 from typing import Optional
 
 from . import _backend
+from . import structs
 
 from .buffers import Panel
 from .window import Window
@@ -19,9 +24,11 @@ __all__ = (
     "update",
     "draw",
     "keys",
+    "structs",
     "set_active_cursor",
     "clear_active_cursor",
     "Panel",
+    "SpecialKeys",
     "BACKSPACE",
     "DELETE",
     "ESCAPE",
@@ -42,7 +49,7 @@ __all__ = (
     "LEFT",
     "RIGHT",
     "UP",
-    "Attribute",
+    "AttributeBit",
     "BLINK",
     "BOLD",
     "DIM",
@@ -61,6 +68,7 @@ __all__ = (
 
 PRINTABLE = set(c for c in string.printable)
 
+SpecialKeys = _backend.SpecialKeys
 BACKSPACE = _backend.SpecialKeys.BACKSPACE
 DELETE = _backend.SpecialKeys.DELETE
 ESCAPE = _backend.SpecialKeys.ESCAPE
@@ -82,19 +90,19 @@ LEFT = _backend.SpecialKeys.LEFT
 RIGHT = _backend.SpecialKeys.RIGHT
 UP = _backend.SpecialKeys.UP
 
-Attribute = _backend.Attribute
-BLINK = Attribute.BLINK
-BOLD = Attribute.BOLD
-DIM = Attribute.DIM
-REVERSE = Attribute.REVERSE
-STANDOUT = Attribute.STANDOUT
-UNDERLINE = Attribute.UNDERLINE
-RED = Attribute.RED
-GREEN = Attribute.GREEN
-YELLOW = Attribute.YELLOW
-BLUE = Attribute.BLUE
-MAGENTA = Attribute.MAGENTA
-CYAN = Attribute.CYAN
+AttributeBit = _backend.AttributeBit
+BLINK = AttributeBit.BLINK
+BOLD = AttributeBit.BOLD
+DIM = AttributeBit.DIM
+REVERSE = AttributeBit.REVERSE
+STANDOUT = AttributeBit.STANDOUT
+UNDERLINE = AttributeBit.UNDERLINE
+RED = AttributeBit.RED
+GREEN = AttributeBit.GREEN
+YELLOW = AttributeBit.YELLOW
+BLUE = AttributeBit.BLUE
+MAGENTA = AttributeBit.MAGENTA
+CYAN = AttributeBit.CYAN
 
 
 class _Clock:
@@ -136,7 +144,6 @@ class _Clock:
 _instance: Optional[_backend.Instance] = None
 _clock: _Clock
 _window: Window
-_ResizeCallback = Callable[[int, int], None]
 _active_cursor: Optional[Cursor] = None
 
 
@@ -144,7 +151,12 @@ class TuindowError(Exception):
     pass
 
 
-def requires_init(function):
+def _requires_init(function):
+    """
+    Decorate a function such that it raises an apprioriate error message when
+    not called from within a `with tuindow.init(...)` block.
+    """
+
     def inner(*args, **kwargs):
         if _instance is None:
             raise TuindowError(
@@ -156,17 +168,54 @@ def requires_init(function):
 
 
 def set_active_cursor(cursor: Cursor) -> None:
+    """
+    Sets the cursor as active -- only one cursor will be active at once
+    and only the active cursor will be drawn"
+    """
+
     global _active_cursor
     _active_cursor = cursor
 
 
 def clear_active_cursor() -> None:
+    """
+    Clears the active cursor -- no cursor will be drawn.
+    """
+
     global _active_cursor
     _active_cursor = None
 
 
 @contextlib.contextmanager
-def init(on_resize: _ResizeCallback, tps=144):
+def init(on_resize: Callable[[int, int], None], tps: int = 144):
+    """
+    Initializes the curses window on entering the context and
+    tears down curses on exit ensuring terminal remains in a usable state.
+
+    on_resize:
+        the given function should accept (width, height) in characters as parameters
+        will be called immediately after initialization
+        will also be called whenever text size changes
+
+    tps (ticks per second):
+        this will be kept by calling tuindow.update() in a loop
+
+    Example:
+        import tuindow
+
+        panel = tuindow.Panel()
+
+        def layout(width, height):
+            panel.rect = (0, 0, width, height)
+
+        with tuindow.init(layout):
+            while 1:
+                for key in tuindow.keys():
+                    ...
+                tuindow.draw(panel)
+                tuindow.update()
+    """
+
     global _instance
     global _clock
     global _window
@@ -185,16 +234,40 @@ def init(on_resize: _ResizeCallback, tps=144):
     _instance = None
 
 
-@requires_init
+@_requires_init
 def update() -> float:
+    """
+    Called in a loop to update the display and keep to a reasonable tickrate.
+
+    Returns time (in seconds) since the previous tuindow.update() call.
+
+    Example:
+        import tuindow
+
+        ...
+
+        with tuindow.init(...):
+            while 1:
+                for k in tuindow.keys():
+                    ...
+                tuindow.draw(...)
+                tuindow.update()
+
+        ...
+    """
+
     assert _instance
     global _clock
     _instance.update_display()
     return next(_clock)
 
 
-@requires_init
+@_requires_init
 def draw(*panels: Panel) -> None:
+    """
+    Draws each panel ignoring regions that haven't changed.
+    """
+
     assert _instance
     size = _instance.size
     try:
@@ -204,6 +277,36 @@ def draw(*panels: Panel) -> None:
             _instance.cache_pending_keys()
             return draw(*panels)
         raise
+
+
+@_requires_init
+def keys() -> Generator[str, None, None]:
+    """
+    Yields keys pressed by the user since the last call to this function.
+
+    Example:
+            ...
+
+            for key in tuindow.keys():
+                if key == "a":
+                    ...
+                elif key == "A":
+                    ...
+                elif key == "\n":
+                    ...
+                elif key == tuindow.SpecialKey.BACKSPACE:
+                    ...
+                elif key == tuindow.BACKSPACE:
+                    # alias to tuindow.SpecialKey.BACKSPACE
+                    ...
+                elif key in tuindow.PRINTABLE:
+                    # set of printable single character keys
+                    ...
+            ...
+    """
+
+    assert _instance
+    return _instance.keys
 
 
 def _unsafe_draw(*panels: Panel) -> None:
@@ -265,9 +368,3 @@ def _handle_active_cursor(panel: Panel, cursor: Cursor) -> None:
         ln.style.attributes,
     )
     _instance.draw_cursor(cursor_x, cursor_y)
-
-
-@requires_init
-def keys() -> Generator[str, None, None]:
-    assert _instance
-    return _instance.keys

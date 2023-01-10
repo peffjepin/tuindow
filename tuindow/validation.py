@@ -1,3 +1,7 @@
+"""
+This module is used internally for validation
+"""
+
 import contextlib
 
 from typing import List

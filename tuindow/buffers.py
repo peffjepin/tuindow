@@ -1,3 +1,7 @@
+"""
+The core data structures the package uses to represent a terminal display.
+"""
+
 from typing import Iterator
 from typing import Tuple
 from typing import Optional
@@ -11,6 +15,13 @@ from . import cursor
 
 
 class Line:
+    """
+    A simple object representing a sequence of characters in the TUI display.
+
+    Sets it's `dirty` attribute to True when it's state has changed.
+    Validates `style` configuration.
+    """
+
     dirty: bool = True
     style_locked: bool = False
 
@@ -26,6 +37,17 @@ class Line:
         data: str = "",
         **kwargs,
     ) -> None:
+        """
+        length:
+            the actual length available to this line on screen (number of characters)
+        style:
+            can either be given by a structs.Style object or by keywords (see: `kwargs`)
+        data:
+            the data to be displayed (clipped by length/style options)
+        kwargs:
+            see: `tuindow.structs.Style.from_keywords`
+        """
+
         self.length = length
         self.data = data
         if style is not None:
@@ -41,10 +63,18 @@ class Line:
 
     @property
     def style(self) -> structs.Style:
+        """
+        Gets the lines style configuration.
+        """
+
         return self._style
 
     @style.setter
     def style(self, style: structs.Style) -> None:
+        """
+        Sets the lines style configuration if self.style_locked is not set to True.
+        """
+
         if self.style_locked:
             return
 
@@ -58,12 +88,20 @@ class Line:
 
     @property
     def padding_fills(self) -> Tuple[str, str]:
+        """
+        see: tuindow.structs.Style.from_keywords
+        """
+
         return self._style.padding.fills
 
     @padding_fills.setter
     def padding_fills(
         self, value: Optional[Union[str, Tuple[str, str]]]
     ) -> None:
+        """
+        see: tuindow.structs.Style.from_keywords
+        """
+
         self.style = structs.Style.from_keywords(
             fill=self.fill,
             padding=self.padding,
@@ -72,39 +110,72 @@ class Line:
 
     @property
     def padding(self) -> Tuple[int, int]:
+        """
+        see: tuindow.structs.Style.from_keywords
+        """
+
         return self._style.padding.values
 
     @padding.setter
     def padding(self, value: Union[int, Tuple[int, int]]) -> None:
+        """
+        see: tuindow.structs.Style.from_keywords
+        """
+
         self.style = structs.Style.from_keywords(
             fill=self.fill, padding=value, padding_fills=self.padding_fills
         )
 
     @property
     def fill(self) -> str:
+        """
+        see: tuindow.structs.Style.from_keywords
+        """
+
         return self._style.fill
 
     @fill.setter
     def fill(self, value: str) -> None:
+        """
+        see: tuindow.structs.Style.from_keywords
+        """
+
         self.style = structs.Style.from_keywords(
             fill=value, padding=self.padding, padding_fills=self.padding_fills
         )
 
     @property
     def data(self) -> str:
+        """
+        Gets the raw data representation.
+        """
+
         return self._data
 
     @data.setter
     def data(self, value: str) -> None:
+        """
+        Sets the raw data representation.
+        """
+
         self._data = value
         self._update_display()
 
     @property
     def length(self) -> int:
+        """
+        Gets the on screen length of the line (in characters).
+        """
+
         return self._length
 
     @length.setter
     def length(self, value: int) -> None:
+        """
+        Sets the on screen length of the line, ensuring that the resulting
+        configuration will be valid.
+        """
+
         with validation.pool(ValueError):
             validation.greater_than_x("Line length", value, 0)
             validation.padding_overflow(self.style.padding, value)
@@ -113,9 +184,18 @@ class Line:
 
     @property
     def display(self) -> str:
+        """
+        Gets the calculated display value.
+
+        Constructed from the raw data and configured style and length,
+        this value is recomputed when the line undergoes a state change.
+        """
+
         return self._display
 
     def _update_display(self) -> None:
+        """Updates the display data"""
+
         lpad, rpad = self.style.calculate_pads(self._data, self._length)
         display_length = self.length - len(lpad) - len(rpad)
         remaining = display_length - len(self.data)
@@ -128,6 +208,16 @@ class Line:
 
 
 class Panel:
+    """
+    A Panel represents a rectangular region of the display.
+
+    A Panel consists of a number of Line objects equal to the panel's height
+    and each Line object has a `length` attribute equal to the panel's width
+
+    When a panel is resized it automatically conforms to these constraints,
+    removing, adding, and modifying it's existing lines as needed.
+    """
+
     available: int = -1
     cursor: cursor.Cursor
     _lines: List[Line]
@@ -143,6 +233,19 @@ class Panel:
         default_style: Optional[structs.Style] = None,
         **kwargs,
     ) -> None:
+        """
+        Initializes a new panel.
+
+        (left, top, width, height):
+            panel rect values
+        default_style:
+            the style which will be applied to any Line objects
+            this panel creates.
+        **kwargs:
+            another way to set the default style.
+            see: tuindow.structs.Style.from_keywords
+        """
+
         self._lines = []
         self._style = (
             default_style
@@ -170,6 +273,10 @@ class Panel:
         return f"{self.__class__.__name__}({rect=})"
 
     def __iter__(self) -> Iterator[Line]:
+        """
+        Iterate the Line objects this panel consists of.
+        """
+
         return iter(self._lines)
 
     @overload
@@ -184,9 +291,17 @@ class Panel:
         return self._lines[index]
 
     def __len__(self) -> int:
+        """
+        The number of lines this panel contains. (self.height)
+        """
+
         return self.height
 
     def writeln(self, index: int, value: str) -> None:
+        """
+        Sets the `data` attribute for the Line object at the given index.
+        """
+
         ln = self[index]
         if ln.data and not value:
             self.available += 1
@@ -195,24 +310,56 @@ class Panel:
         ln.data = value
 
     def readln(self, index: int) -> str:
+        """
+        Gets the `data` attribute for the Line object at the given index.
+        """
+
         return self[index].data
 
     def clearln(self, index: int) -> None:
+        """
+        Sets the `data` attribute for the Line object
+        at the given index to an empty string.
+        """
+
         self.writeln(index, "")
 
     def insertln(self, index: int, value: str) -> None:
+        """
+        Inserts a new Line object into the panel at the given index
+        and writes it's `data` attribute.
+
+        This results all lines below this line shifting down, just as in
+        a list. The line at the end of the panel will be clipped off.
+        """
+
         self._lines.insert(index, self._default_line(value))
         del self._lines[-1]
         for ln in self[index:]:
             ln.dirty = True
 
     def deleteln(self, index: int) -> None:
+        """
+        Deletes the Line object in the panel at the given index
+
+        This results all the following Line objects shifting up, and a
+        new default Line object will be inserted at the end of the panel.
+        """
+
         del self._lines[index]
         self._lines.append(self._default_line())
         for ln in self[index:]:
             ln.dirty = True
 
     def styleln(self, index: int, style=None, **kwargs) -> None:
+        """
+        Sets the style for the Line object in the panel at the given index.
+
+        This sets the `style_locked` attribute on the line so if this panel's
+        default style is changed, lines styled through this method will be
+        unaffected.
+        """
+
         ln = self[index]
         ln.style_locked = False
         if style is None:
@@ -222,10 +369,26 @@ class Panel:
         ln.style_locked = True
 
     def shift_up(self, n: int = 1) -> None:
+        """
+        Shifts all the lines up `n` spaces:
+
+        This clips the first `n` Line objects out of the panel.
+        Clipped Line objects will be replaced by adding default
+        Line objects to the bottom of the panel.
+        """
+
         validation.greater_than_x("Panel.shift_up param n", n, 0)
         self._shift_data(-n)
 
     def shift_down(self, n: int = 1) -> None:
+        """
+        Shifts all the lines down `n` spaces:
+
+        This clips the last `n` Line objects out of the panel.
+        Clipped Line objects will be replaced by adding default
+        Line objects to the top of the panel.
+        """
+
         validation.greater_than_x("Panel.shift_down param n", n, 0)
         self._shift_data(n)
 
@@ -248,12 +411,24 @@ class Panel:
 
     @property
     def first_available(self) -> Optional[int]:
+        """
+        Returns the index of the first available (data="") Line object
+        in the panel.
+        """
+
         for i, ln in enumerate(self):
             if not ln.data:
                 return i
         return None
 
     def write_if_available(self, value: str) -> None:
+        """
+        If there are any available (data="") Line objects in this panel,
+        this function writes `value` to the first it encounters.
+
+        Otherwise this function does nothing.
+        """
+
         if not self.available:
             return
         index = self.first_available
@@ -263,6 +438,18 @@ class Panel:
     def set_default_style(
         self, style: Optional[structs.Style] = None, **kwargs
     ) -> None:
+        """
+        Sets the default style for this Panel.
+
+        All Line objects in this panel will be updated unless their
+        `style_locked` attribute is set.
+
+        style:
+            given through this parameter or as **kwargs
+        **kwargs:
+            see: tuindow.structs.Style.from_keywords
+        """
+
         if style is not None:
             self._style = style
         else:
@@ -273,10 +460,24 @@ class Panel:
 
     @property
     def rect(self) -> Tuple[int, int, int, int]:
+        """
+        Returns the (left, top, width, height) representing this panel's
+        space on the screen.
+
+        (0, 0) is the top left, units are number of characters
+        """
+
         return (self.left, self.top, self.width, self.height)
 
     @rect.setter
     def rect(self, value: Tuple[int, int, int, int]) -> None:
+        """
+        Sets (and validates) the (left, top, width, height) representing this panel's
+        space on the screen.
+
+        (0, 0) is the top left, units are number of characters
+        """
+
         rect = structs.Rect(*value)
 
         with validation.pool(ValueError):
@@ -308,6 +509,7 @@ class Panel:
         Returns the internal rect object for drawing, as opposed to the
         tuple interface meant for the user.
         """
+
         return self._rect
 
     def _default_line(self, data="") -> Line:
@@ -315,32 +517,72 @@ class Panel:
 
     @property
     def left(self) -> int:
+        """
+        Gets the left side of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         return self._rect.left
 
     @left.setter
     def left(self, value: int) -> None:
+        """
+        Sets the left side of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         self.rect = (value, self.top, self.width, self.height)
 
     @property
     def top(self) -> int:
+        """
+        Gets the top side of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         return self._rect.top
 
     @top.setter
     def top(self, value: int) -> None:
+        """
+        Sets the top side of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         self.rect = (self.left, value, self.width, self.height)
 
     @property
     def width(self) -> int:
+        """
+        Gets the width of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         return self._rect.width
 
     @width.setter
     def width(self, value: int) -> None:
+        """
+        Sets the width of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         self.rect = (self.left, self.top, value, self.height)
 
     @property
     def height(self) -> int:
+        """
+        Gets the height of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         return self._rect.height
 
     @height.setter
     def height(self, value: int) -> None:
+        """
+        Sets the height of the panel in screen space.
+        (0, 0) is the top left, units are number of characters
+        """
+
         self.rect = (self.left, self.top, self.width, value)
