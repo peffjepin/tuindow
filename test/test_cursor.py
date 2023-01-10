@@ -505,3 +505,9 @@ def test_down_overflow():
 
     assert excinfo.value.amount == 2
     assert cursor.line == cursor.maxline
+
+
+def test_setting_maxline_clamps_line():
+    cursor = Cursor(line=3)
+    cursor.maxline = 2
+    assert cursor.line == 2
