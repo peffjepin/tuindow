@@ -17,7 +17,7 @@ if __name__ == "__main__":
     output_path = pathlib.Path.cwd() / "tuindow_simple_editor.py"
     backup_output_path = pathlib.Path.cwd() / "tuindow_simple_editor.py.old"
     if output_path.exists():
-        shutil.move(output_path, backup_output_path)
+        shutil.move(str(output_path), str(backup_output_path))
     output_path.write_text(
         "# This file is a simple text editor written with the tuindow library\n\n"
         "# You are viewing this file with itself\n\n"
