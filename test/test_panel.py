@@ -55,7 +55,9 @@ def test_panel_height_less_than_1(height, expect_error):
         p.height = height
 
 
-def test_special_width_height_initial_values_negative_1_means_dont_initialize_yet(expect_error):
+def test_special_width_height_initial_values_negative_1_means_dont_initialize_yet(
+    expect_error,
+):
     p = Panel(0, 0, -1, -1)
 
     # the panel is currently invalid so if we initialize it by updaing it's rect
@@ -383,3 +385,38 @@ def test_shift_down_overflow():
     assert panel.readline(0) == ""
     assert panel.readline(1) == ""
     assert panel.readline(2) == ""
+
+
+@params(
+    "index,value,expected",
+    (0, "abc", ["abc", "0", "1"]),
+    (1, "abc", ["0", "abc", "1"]),
+    (3, "abc", ["0", "1", "2"]),
+    (-1, "abc", ["0", "1", "abc"]),
+)
+def test_insert_line(index, value, expected):
+    panel = Panel(0, 0, 5, 3)
+    for i in range(3):
+        panel.writeline(i, str(i))
+
+    panel.insertline(index, value)
+
+    for i, ln in enumerate(panel):
+        assert ln.data == expected[i]
+
+
+@params(
+    "index,expected",
+    (0, ["1", "2", ""]),
+    (1, ["0", "2", ""]),
+    (-1, ["0", "1", ""]),
+)
+def test_delete_line(index, expected):
+    panel = Panel(0, 0, 5, 3)
+    for i in range(3):
+        panel.writeline(i, str(i))
+
+    panel.deleteline(index)
+
+    for i, ln in enumerate(panel):
+        assert ln.data == expected[i]

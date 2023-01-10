@@ -1,10 +1,9 @@
 from typing import Iterator
-from typing import Generator
-from typing import Iterable
 from typing import Tuple
 from typing import Optional
 from typing import Union
 from typing import List
+from typing import overload
 
 from . import structs
 from . import validation
@@ -13,6 +12,7 @@ from . import cursor
 
 class Line:
     dirty: bool = True
+    style_locked: bool = False
 
     _display: str = ""
     _data: str = ""
@@ -24,7 +24,7 @@ class Line:
         length: int,
         style: Optional[structs.Style] = None,
         data: str = "",
-        **kwargs
+        **kwargs,
     ) -> None:
         self.length = length
         self.data = data
@@ -45,6 +45,9 @@ class Line:
 
     @style.setter
     def style(self, style: structs.Style) -> None:
+        if self.style_locked:
+            return
+
         with validation.pool(ValueError):
             validation.length_one_string("fill style", style.fill)
             validation.padding_overflow(style.padding, self.length)
@@ -74,7 +77,8 @@ class Line:
     @padding.setter
     def padding(self, value: Union[int, Tuple[int, int]]) -> None:
         self.style = structs.Style.from_keywords(
-            fill=self.fill, padding=value, padding_fills=self.padding_fills)
+            fill=self.fill, padding=value, padding_fills=self.padding_fills
+        )
 
     @property
     def fill(self) -> str:
@@ -83,7 +87,8 @@ class Line:
     @fill.setter
     def fill(self, value: str) -> None:
         self.style = structs.Style.from_keywords(
-            fill=value, padding=self.padding, padding_fills=self.padding_fills)
+            fill=value, padding=self.padding, padding_fills=self.padding_fills
+        )
 
     @property
     def data(self) -> str:
@@ -127,7 +132,6 @@ class Panel:
     cursor: cursor.Cursor
     _lines: List[Line]
     _style: structs.Style
-    _styled: List[bool]
     _rect: structs.Rect = structs.Rect(-1, -1, -1, -1)
 
     def __init__(
@@ -140,7 +144,6 @@ class Panel:
         **kwargs,
     ) -> None:
         self._lines = []
-        self._styled = []
         self._style = (
             default_style
             if default_style is not None
@@ -168,7 +171,15 @@ class Panel:
     def __iter__(self) -> Iterator[Line]:
         return iter(self._lines)
 
+    @overload
     def __getitem__(self, index: int) -> Line:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> List[Line]:
+        ...
+
+    def __getitem__(self, index: Union[int, slice]) -> Union[Line, List[Line]]:
         return self._lines[index]
 
     def __len__(self) -> int:
@@ -188,12 +199,26 @@ class Panel:
     def clearline(self, index: int) -> None:
         self.writeline(index, "")
 
+    def insertline(self, index: int, value: str) -> None:
+        self._lines.insert(index, self._default_line(value))
+        del self._lines[-1]
+        for ln in self[index:]:
+            ln.dirty = True
+
+    def deleteline(self, index: int) -> None:
+        del self._lines[index]
+        self._lines.append(self._default_line())
+        for ln in self[index:]:
+            ln.dirty = True
+
     def styleline(self, index: int, style=None, **kwargs) -> None:
+        ln = self[index]
+        ln.style_locked = False
         if style is None:
-            self[index].style = structs.Style.from_keywords(**kwargs)
+            ln.style = structs.Style.from_keywords(**kwargs)
         else:
-            self[index].style = style
-        self._styled[index] = True
+            ln.style = style
+        ln.style_locked = True
 
     def write_if_available(self, value: str) -> None:
         if not self.available:
@@ -217,9 +242,7 @@ class Panel:
         else:
             self._style = structs.Style.from_keywords(**kwargs)
 
-        for styled, ln in zip(self._styled, self._lines):
-            if styled:
-                continue
+        for ln in self:
             ln.style = self._style
 
     @property
@@ -229,22 +252,19 @@ class Panel:
     def _shift_data(self, n: int) -> None:
         if abs(n) >= self.height:
             self._lines = [self._default_line() for _ in range(self.height)]
-            self._styled = [False] * self.height
 
         fresh_lines = [self._default_line() for _ in range(abs(n))]
-        fresh_styled = [False] * abs(n)
 
         if n < 0:
-            existing_slice = slice(abs(n), len(self._lines), 1)
-            self._lines = self._lines[existing_slice] + fresh_lines
-            self._styled = self._styled[existing_slice] + fresh_styled
+            existing_slice = self._lines[abs(n) : len(self._lines)]
+            for ln in existing_slice:
+                ln.dirty = True
+            self._lines = existing_slice + fresh_lines
         elif n > 0:
-            existing_slice = slice(0, self.height-n, 1)
-            self._lines = fresh_lines + self._lines[existing_slice]
-            self._styled = fresh_styled + self._styled[existing_slice]
-
-        # ensure this panel is marked as dirty after a shift
-        self.set_rect(*self.rect)
+            existing_slice = self._lines[0 : self.height - n]
+            for ln in existing_slice:
+                ln.dirty = True
+            self._lines = fresh_lines + existing_slice
 
     def shift_up(self, n: int = 1) -> None:
         validation.greater_than_x("Panel.shift_up param n", n, 0)
@@ -279,29 +299,28 @@ class Panel:
         self._rect = rect
 
         if len(self._lines) < rect.height:
-            grow_amount = rect.height-len(self._lines)
-            self._lines.extend(self._default_line()
-                               for _ in range(grow_amount))
-            self._styled.extend([False] * grow_amount)
+            grow_amount = rect.height - len(self._lines)
+            self._lines.extend(
+                self._default_line() for _ in range(grow_amount)
+            )
         else:
-            self._lines = self._lines[:rect.height]
-            self._styled = self._styled[: rect.height]
+            self._lines = self._lines[: rect.height]
 
         for ln in self._lines:
             if ln.length != rect.width:
                 ln.length = rect.width
 
-        self.cursor.maxline = rect.height-1
+        self.cursor.maxline = rect.height - 1
         self.available = sum(1 if ln.data == "" else 0 for ln in self)
 
-    def _default_line(self) -> Line:
-        return Line(self.width, style=self._style)
+    def _default_line(self, data="") -> Line:
+        return Line(self.width, style=self._style, data=data)
 
-    @ property
+    @property
     def left(self) -> int:
         return self._rect.left
 
-    @ left.setter
+    @left.setter
     def left(self, value: int) -> None:
         self.set_rect(
             rect=structs.Rect(value, self.top, self.width, self.height)

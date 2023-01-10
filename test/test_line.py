@@ -1,6 +1,7 @@
 from .conftest import params
 
 from tuindow.buffers import Line
+from tuindow.structs import Style
 
 
 @params(
@@ -14,28 +15,44 @@ from tuindow.buffers import Line
     ({"length": 5, "data": "abcde", "padding": (0, 1)}, "abcd "),
     ({"length": 5, "data": "abcde", "padding": (2, 1)}, "  ab "),
     ({"length": 5, "data": "ab", "padding": (1, 1)}, " ab  "),
-    ({"length": 5, "data": "abc", "padding": (1, 1), "padding_fills": "."}, ".abc."),
     (
-        {
-            "length": 5, "data": "ab", "padding": (1, 1),
-            "padding_fills": "!", "fill": "?"
-        },
-        "!ab?!"
+        {"length": 5, "data": "abc", "padding": (1, 1), "padding_fills": "."},
+        ".abc.",
     ),
     (
         {
-            "length": 5, "data": "ab", "padding": (1, 1),
-            "padding_fills": ("!", ".")
+            "length": 5,
+            "data": "ab",
+            "padding": (1, 1),
+            "padding_fills": "!",
+            "fill": "?",
         },
-        "!ab ."
+        "!ab?!",
+    ),
+    (
+        {
+            "length": 5,
+            "data": "ab",
+            "padding": (1, 1),
+            "padding_fills": ("!", "."),
+        },
+        "!ab .",
     ),
     ({"length": 5, "data": "abc", "padding": 1}, " abc "),
     ({"length": 5, "data": "a", "padding": (-1, 1)}, "   a "),
     ({"length": 5, "data": "a", "padding": -1}, "  a  "),
     ({"length": 5, "data": "a", "padding": (-1, -3)}, " a   "),
     ({"length": 5, "data": "ab", "padding": (-1, -1)}, "  ab "),
-    ({"length": 5, "data": "a", "padding": -1,
-     "padding_fills": "!", "fill": "."}, "!!a!!"),
+    (
+        {
+            "length": 5,
+            "data": "a",
+            "padding": -1,
+            "padding_fills": "!",
+            "fill": ".",
+        },
+        "!!a!!",
+    ),
 )
 def test_display(kwargs, expected):
     line = Line(**kwargs)
@@ -73,11 +90,11 @@ def test_modifying_length_less_than_1(expect_error, length):
 
 
 def test_fill():
-    assert Line(10, fill="!").display == "!"*10
+    assert Line(10, fill="!").display == "!" * 10
 
 
 def test_default_fill_is_space():
-    assert Line(10).display == " "*10
+    assert Line(10).display == " " * 10
 
 
 @params("fill", "", "--")
@@ -104,7 +121,9 @@ def test_dirty_on_init():
     ((1, 1), 2),
 )
 def test_padding_exceeds_length(expect_error, padding, length):
-    with expect_error(ValueError, "padding", "length", repr(length), repr(padding)):
+    with expect_error(
+        ValueError, "padding", "length", repr(length), repr(padding)
+    ):
         Line(length, padding=padding)
 
 
@@ -128,8 +147,21 @@ def test_scalar_padding_modification():
     assert line.display == " ab "
 
 
-def test_insufficient_padding_space_error_when_line_length_changed(expect_error):
+def test_insufficient_padding_space_error_when_line_length_changed(
+    expect_error,
+):
     ln = Line(4, padding=(1, 2))
 
     with expect_error(ValueError, "padding", "length", repr(2), repr((1, 2))):
         ln.length = 2
+
+
+def test_style_not_changed_when_locked():
+    style1 = Style(fill="1")
+    style2 = Style(fill="2")
+
+    line = Line(1, style=style1)
+    line.style_locked = True
+    line.style = style2
+
+    assert line.style is style1
