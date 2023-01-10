@@ -49,7 +49,7 @@ __all__ = (
     "STANDOUT",
     "UNDERLINE",
     "PRINTABLE",
-    "Overscroll"
+    "Overscroll",
 )
 
 PRINTABLE = set(c for c in string.printable)
@@ -191,7 +191,11 @@ def _unsafe_draw(*panels: Panel) -> None:
         for i, line in enumerate(panel):
             if dirty or line.dirty:
                 _instance.write_text(
-                    panel.left, panel.top + i, line.display, line.style.attributes)
+                    panel.left,
+                    panel.top + i,
+                    line.display,
+                    line.style.attributes,
+                )
             line.dirty = False
 
         if Cursor.active is panel.cursor:
@@ -232,8 +236,9 @@ def _handle_active_cursor(panel: Panel, cursor: Cursor) -> None:
 
     _instance.write_text(
         panel.left,
-        cursor_y, pads[0] + panned_display + pads[1],
-        ln.style.attributes
+        cursor_y,
+        pads[0] + panned_display + pads[1],
+        ln.style.attributes,
     )
     _instance.draw_cursor(cursor_x, cursor_y)
 

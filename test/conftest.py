@@ -15,4 +15,5 @@ def expect_error():
             yield
         for expected in present_in_message:
             assert expected in str(excinfo)
+
     return inner

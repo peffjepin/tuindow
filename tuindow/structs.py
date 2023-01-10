@@ -75,7 +75,7 @@ class Style(NamedTuple):
         fill: str = " ",
         padding_fills: Optional[Union[str, Tuple[str, str]]] = None,
         padding: Union[int, Tuple[int, int]] = (0, 0),
-        attributes: int = 0
+        attributes: int = 0,
     ) -> "Style":
         if padding_fills is None:
             padding_fills = (fill, fill)
@@ -86,7 +86,7 @@ class Style(NamedTuple):
         return cls(
             padding=Padding.calculate(padding_fills, padding),
             fill=fill,
-            attributes=attributes
+            attributes=attributes,
         )
 
     def calculate_pads(self, string: str, max_length: int) -> Tuple[str, str]:
