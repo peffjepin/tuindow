@@ -19,6 +19,8 @@ __all__ = (
     "update",
     "draw",
     "keys",
+    "set_active_cursor",
+    "clear_active_cursor",
     "Panel",
     "BACKSPACE",
     "DELETE",
@@ -87,7 +89,6 @@ DIM = Attribute.DIM
 REVERSE = Attribute.REVERSE
 STANDOUT = Attribute.STANDOUT
 UNDERLINE = Attribute.UNDERLINE
-
 RED = Attribute.RED
 GREEN = Attribute.GREEN
 YELLOW = Attribute.YELLOW
@@ -96,7 +97,7 @@ MAGENTA = Attribute.MAGENTA
 CYAN = Attribute.CYAN
 
 
-class Clock:
+class _Clock:
     _interval: float
     _tps: int
     _previous: float
@@ -133,9 +134,10 @@ class Clock:
 
 
 _instance: Optional[_backend.Instance] = None
-_clock: Clock
+_clock: _Clock
 _window: Window
 _ResizeCallback = Callable[[int, int], None]
+_active_cursor: Optional[Cursor] = None
 
 
 class TuindowError(Exception):
@@ -153,13 +155,23 @@ def requires_init(function):
     return inner
 
 
+def set_active_cursor(cursor: Cursor) -> None:
+    global _active_cursor
+    _active_cursor = cursor
+
+
+def clear_active_cursor() -> None:
+    global _active_cursor
+    _active_cursor = None
+
+
 @contextlib.contextmanager
 def init(on_resize: _ResizeCallback, tps=144):
     global _instance
     global _clock
     global _window
 
-    _clock = Clock(tps)
+    _clock = _Clock(tps)
     _window = Window(0, 0, 1, 1)
 
     def resize_callback(width: int, height: int) -> None:
@@ -199,7 +211,7 @@ def _unsafe_draw(*panels: Panel) -> None:
     assert _instance
 
     for panel in panels:
-        dirty = _window.draw(panel.rect)
+        dirty = _window.draw(panel.display_rect)
         for i, line in enumerate(panel):
             if dirty or line.dirty:
                 _instance.write_text(
@@ -210,10 +222,10 @@ def _unsafe_draw(*panels: Panel) -> None:
                 )
             line.dirty = False
 
-        if Cursor.active is panel.cursor:
+        if _active_cursor is panel.cursor:
             _handle_active_cursor(panel, panel.cursor)
 
-    if Cursor.active is None:
+    if _active_cursor is None:
         _instance.disable_cursor()
 
 

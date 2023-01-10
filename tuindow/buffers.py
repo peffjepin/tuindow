@@ -153,8 +153,9 @@ class Panel:
         self.cursor = cursor.Cursor(
             index=0,
             line=0,
-            readline=self.readline,
-            writeline=self.writeline,
+            maxline=0,
+            readline=self.readln,
+            writeline=self.writeln,
         )
 
         if width == -1 or height == -1:
@@ -162,7 +163,7 @@ class Panel:
             # and only layout the panels later from a resize callback
             return
 
-        self.set_rect(rect=structs.Rect(left, top, width, height))
+        self.rect = (left, top, width, height)
 
     def __repr__(self) -> str:
         rect = self._rect
@@ -185,7 +186,7 @@ class Panel:
     def __len__(self) -> int:
         return self.height
 
-    def writeline(self, index: int, value: str) -> None:
+    def writeln(self, index: int, value: str) -> None:
         ln = self[index]
         if ln.data and not value:
             self.available += 1
@@ -193,25 +194,25 @@ class Panel:
             self.available -= 1
         ln.data = value
 
-    def readline(self, index: int) -> str:
+    def readln(self, index: int) -> str:
         return self[index].data
 
-    def clearline(self, index: int) -> None:
-        self.writeline(index, "")
+    def clearln(self, index: int) -> None:
+        self.writeln(index, "")
 
-    def insertline(self, index: int, value: str) -> None:
+    def insertln(self, index: int, value: str) -> None:
         self._lines.insert(index, self._default_line(value))
         del self._lines[-1]
         for ln in self[index:]:
             ln.dirty = True
 
-    def deleteline(self, index: int) -> None:
+    def deleteln(self, index: int) -> None:
         del self._lines[index]
         self._lines.append(self._default_line())
         for ln in self[index:]:
             ln.dirty = True
 
-    def styleline(self, index: int, style=None, **kwargs) -> None:
+    def styleln(self, index: int, style=None, **kwargs) -> None:
         ln = self[index]
         ln.style_locked = False
         if style is None:
@@ -220,34 +221,13 @@ class Panel:
             ln.style = style
         ln.style_locked = True
 
-    def write_if_available(self, value: str) -> None:
-        if not self.available:
-            return
-        index = self.first_available
-        assert index is not None
-        self.writeline(index, value)
+    def shift_up(self, n: int = 1) -> None:
+        validation.greater_than_x("Panel.shift_up param n", n, 0)
+        self._shift_data(-n)
 
-    @property
-    def first_available(self) -> Optional[int]:
-        for i, ln in enumerate(self):
-            if not ln.data:
-                return i
-        return None
-
-    def set_default_style(
-        self, style: Optional[structs.Style] = None, **kwargs
-    ) -> None:
-        if style is not None:
-            self._style = style
-        else:
-            self._style = structs.Style.from_keywords(**kwargs)
-
-        for ln in self:
-            ln.style = self._style
-
-    @property
-    def rect(self) -> structs.Rect:
-        return self._rect
+    def shift_down(self, n: int = 1) -> None:
+        validation.greater_than_x("Panel.shift_down param n", n, 0)
+        self._shift_data(n)
 
     def _shift_data(self, n: int) -> None:
         if abs(n) >= self.height:
@@ -266,29 +246,38 @@ class Panel:
                 ln.dirty = True
             self._lines = fresh_lines + existing_slice
 
-    def shift_up(self, n: int = 1) -> None:
-        validation.greater_than_x("Panel.shift_up param n", n, 0)
-        self._shift_data(-n)
+    @property
+    def first_available(self) -> Optional[int]:
+        for i, ln in enumerate(self):
+            if not ln.data:
+                return i
+        return None
 
-    def shift_down(self, n: int = 1) -> None:
-        validation.greater_than_x("Panel.shift_down param n", n, 0)
-        self._shift_data(n)
+    def write_if_available(self, value: str) -> None:
+        if not self.available:
+            return
+        index = self.first_available
+        assert index is not None
+        self.writeln(index, value)
 
-    def set_rect(
-        self,
-        left: int = -1,
-        top: int = -1,
-        width: int = 0,
-        height: int = 0,
-        rect: Optional[structs.Rect] = None,
+    def set_default_style(
+        self, style: Optional[structs.Style] = None, **kwargs
     ) -> None:
-        """I'd sure love to use a @rect.setter here but mypy hates Unions in setters."""
-
-        if rect is None:
-            rect = structs.Rect(left, top, width, height)
+        if style is not None:
+            self._style = style
         else:
-            # construct a new rect to ensure all panels have unique rects
-            rect = structs.Rect(*rect)
+            self._style = structs.Style.from_keywords(**kwargs)
+
+        for ln in self:
+            ln.style = self._style
+
+    @property
+    def rect(self) -> Tuple[int, int, int, int]:
+        return (self.left, self.top, self.width, self.height)
+
+    @rect.setter
+    def rect(self, value: Tuple[int, int, int, int]) -> None:
+        rect = structs.Rect(*value)
 
         with validation.pool(ValueError):
             validation.not_negative("Panel.left", rect.left)
@@ -313,6 +302,14 @@ class Panel:
         self.cursor.maxline = rect.height - 1
         self.available = sum(1 if ln.data == "" else 0 for ln in self)
 
+    @property
+    def display_rect(self) -> structs.Rect:
+        """
+        Returns the internal rect object for drawing, as opposed to the
+        tuple interface meant for the user.
+        """
+        return self._rect
+
     def _default_line(self, data="") -> Line:
         return Line(self.width, style=self._style, data=data)
 
@@ -322,9 +319,7 @@ class Panel:
 
     @left.setter
     def left(self, value: int) -> None:
-        self.set_rect(
-            rect=structs.Rect(value, self.top, self.width, self.height)
-        )
+        self.rect = (value, self.top, self.width, self.height)
 
     @property
     def top(self) -> int:
@@ -332,9 +327,7 @@ class Panel:
 
     @top.setter
     def top(self, value: int) -> None:
-        self.set_rect(
-            rect=structs.Rect(self.left, value, self.width, self.height)
-        )
+        self.rect = (self.left, value, self.width, self.height)
 
     @property
     def width(self) -> int:
@@ -342,9 +335,7 @@ class Panel:
 
     @width.setter
     def width(self, value: int) -> None:
-        self.set_rect(
-            rect=structs.Rect(self.left, self.top, value, self.height)
-        )
+        self.rect = (self.left, self.top, value, self.height)
 
     @property
     def height(self) -> int:
@@ -352,6 +343,4 @@ class Panel:
 
     @height.setter
     def height(self, value: int) -> None:
-        self.set_rect(
-            rect=structs.Rect(self.left, self.top, self.width, value)
-        )
+        self.rect = (self.left, self.top, self.width, value)

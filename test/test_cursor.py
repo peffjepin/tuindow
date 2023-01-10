@@ -16,17 +16,23 @@ def Cursor(initial_value="", index=0, line=0):
         nonlocal value
         value = new_value
 
-    return LibCursor(index, line, readline=read, writeline=write)
+    return LibCursor(index, line, maxline=0, readline=read, writeline=write)
 
 
-def MultilineCursor(lines, index, line):
+def MultilineCursor(lines, index=0, line=0):
     def readline(line):
         return lines[line]
 
     def writeline(line, value):
         lines[line] = value
 
-    return LibCursor(index, line, readline=readline, writeline=writeline)
+    return LibCursor(
+        index,
+        line,
+        maxline=len(lines) - 1,
+        readline=readline,
+        writeline=writeline,
+    )
 
 
 def test_read_write_functions():
@@ -44,7 +50,9 @@ def test_read_write_functions():
         line_written = line
         return value
 
-    cursor = LibCursor(index=1, line=2, readline=read, writeline=write)
+    cursor = LibCursor(
+        index=1, line=2, maxline=2, readline=read, writeline=write
+    )
 
     assert cursor.data == "abc"
     assert line_read == 2
@@ -224,17 +232,17 @@ def test_delete_negative():
     assert cursor.index == 0
 
 
-def test_consume():
+def test_consume_line():
     cursor = Cursor("abc")
 
-    assert cursor.consume() == "abc"
+    assert cursor.consume_line() == "abc"
     assert cursor.data == ""
 
 
 def test_non_zero_index():
     cursor = Cursor("abc", index=3)
 
-    assert cursor.consume() == "abc"
+    assert cursor.consume_line() == "abc"
     assert cursor.data == ""
     assert cursor.index == 0
 
@@ -319,17 +327,21 @@ def test_set_index_positive_overflow():
     assert cursor.index == 3
 
 
-def test_cursor_line_modification():
-    cursor = Cursor("abc")
-
+@params(
+    "new_line_value,expected_line_value",
+    (0, 0),
+    (1, 1),
+    (2, 2),
+    (-1, 4),
+    (-100, 0),
+    (100, 4),
+)
+def test_cursor_line_modification(new_line_value, expected_line_value):
+    cursor = MultilineCursor(list(map(str, range(5))), index=0, line=0)
     assert cursor.line == 0
 
-    cursor.line = 2
-    assert cursor.line == 2
-
-    # no upper bound on cursor line
-    cursor.line = 1000
-    assert cursor.line == 1000
+    cursor.line = new_line_value
+    assert cursor.line == expected_line_value
 
 
 def test_cursor_preserves_and_clamps_index_when_line_changes():
@@ -361,13 +373,6 @@ def test_cursor_preserves_and_clamps_index_when_line_changes():
     assert cursor.index == 0
 
 
-def test_cursor_line_negative(expect_error):
-    cursor = Cursor("abc")
-
-    with expect_error(ValueError, "cannot be negative"):
-        cursor.line = -1
-
-
 def test_writing_multiple_lines():
     lines = ["", ""]
     cursor = MultilineCursor(lines, 0, 0)
@@ -388,41 +393,6 @@ def test_set_multiline_position_sets_line_then_index():
     assert cursor.line == 1
 
 
-def test_multiline_position_line_error(expect_error):
-    cursor = MultilineCursor(["", ""], 0, 0)
-
-    with expect_error(ValueError, "Cursor", "line"):
-        cursor.position = (0, -1)
-
-
-def test_set_active():
-    cursor1 = Cursor("1")
-    cursor2 = Cursor("2")
-
-    cursor1.set_active()
-    assert LibCursor.active is cursor1
-    cursor2.set_active()
-    assert LibCursor.active is cursor2
-
-
-def test_clear_active_instance():
-    cursor1 = Cursor("1")
-
-    cursor1.set_active()
-    assert LibCursor.active is cursor1
-    cursor1.clear_active()
-    assert LibCursor.active is None
-
-
-def test_clear_active_class():
-    cursor1 = Cursor("1")
-
-    cursor1.set_active()
-    assert LibCursor.active is cursor1
-    LibCursor.clear_active()
-    assert LibCursor.active is None
-
-
 @params(
     "length,index,expected",
     (2, 0, "01"),
@@ -441,7 +411,7 @@ def test_pan(length, index, expected):
 
 
 def test_up():
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
 
     cursor.up()
 
@@ -449,7 +419,7 @@ def test_up():
 
 
 def test_up_many():
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
 
     cursor.up(3)
 
@@ -457,14 +427,14 @@ def test_up_many():
 
 
 def test_up_negative(expect_error):
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
 
     with expect_error(ValueError):
         cursor.up(-2)
 
 
 def test_up_overflow(expect_error):
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
 
     with pytest.raises(Overscroll) as excinfo:
         cursor.up(7)
@@ -474,7 +444,7 @@ def test_up_overflow(expect_error):
 
 
 def test_down():
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
 
     cursor.down()
 
@@ -482,23 +452,22 @@ def test_down():
 
 
 def test_down_many():
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=1)
 
     cursor.down(3)
 
-    assert cursor.line == 6
+    assert cursor.line == 4
 
 
 def test_down_negative():
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
 
     with pytest.raises(ValueError):
         cursor.down(-3)
 
 
 def test_down_overflow():
-    cursor = Cursor(line=3)
-    cursor.maxline = 4
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
 
     with pytest.raises(Overscroll) as excinfo:
         cursor.down(3)
@@ -508,6 +477,6 @@ def test_down_overflow():
 
 
 def test_setting_maxline_clamps_line():
-    cursor = Cursor(line=3)
+    cursor = MultilineCursor(["" for _ in range(5)], line=3)
     cursor.maxline = 2
     assert cursor.line == 2

@@ -77,15 +77,3 @@ def padding_fills(padding: structs.Padding) -> None:
 def length_one_string(desc: str, value: str) -> None:
     if len(value) != 1:
         _error(ValueError(f"{desc} ({value!r}) must be a string of length 1"))
-
-
-def rects_dont_collide(desc: str, r1: structs.Rect, r2: structs.Rect) -> None:
-    if r1.intersects(r2):
-        _error(ValueError(f"{desc} collision detected ({r1!r}), ({r2!r})"))
-
-
-def rect_in_bounds(
-    desc: str, rect: structs.Rect, bounds: structs.Rect
-) -> None:
-    if not bounds.contains(rect):
-        _error(ValueError(f"{desc} not in bounds ({rect=}, {bounds=})"))

@@ -14,8 +14,18 @@ import collections
 from curses import ascii
 
 
-_TUINDOW_ATTRIBUTE_BITS_START = 1 << 64
-_CURSES_ATTRIBUTE_MASK = _TUINDOW_ATTRIBUTE_BITS_START - 1
+_ATTRIBUTE_BITS_START = 1 << 64
+_CURSES_ATTRIBUTE_BITMASK = _ATTRIBUTE_BITS_START - 1
+
+_attribute_bits_current = 1 << 64
+
+
+def _new_attribute_bit():
+    global _attribute_bits_current
+
+    new_bit = _attribute_bits_current
+    _attribute_bits_current <<= 1
+    return new_bit
 
 
 class Attribute:
@@ -29,12 +39,12 @@ class Attribute:
     # initialization not available until curses is initialized
     # so I'm storing color attributes in higher order bits to
     # be converted to curses color pairs at draw time
-    RED = _TUINDOW_ATTRIBUTE_BITS_START
-    GREEN = _TUINDOW_ATTRIBUTE_BITS_START << 1
-    YELLOW = _TUINDOW_ATTRIBUTE_BITS_START << 2
-    BLUE = _TUINDOW_ATTRIBUTE_BITS_START << 3
-    MAGENTA = _TUINDOW_ATTRIBUTE_BITS_START << 4
-    CYAN = _TUINDOW_ATTRIBUTE_BITS_START << 5
+    RED = _new_attribute_bit()
+    GREEN = _new_attribute_bit()
+    YELLOW = _new_attribute_bit()
+    BLUE = _new_attribute_bit()
+    MAGENTA = _new_attribute_bit()
+    CYAN = _new_attribute_bit()
 
 
 class SpecialKeys(enum.Enum):
@@ -92,7 +102,7 @@ class CursesError(Exception):
     pass
 
 
-class _ColorPairIndices(enum.Enum):
+class _ColorPairIndex(enum.Enum):
     RED = 1
     GREEN = 2
     YELLOW = 3
@@ -122,18 +132,28 @@ class Instance:
 
         curses.start_color()
 
-        curses.init_pair(_ColorPairIndices.RED.value,
-                         curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(_ColorPairIndices.GREEN.value,
-                         curses.COLOR_GREEN, curses.COLOR_BLACK)
-        curses.init_pair(_ColorPairIndices.YELLOW.value,
-                         curses.COLOR_YELLOW, curses.COLOR_BLACK)
-        curses.init_pair(_ColorPairIndices.BLUE.value,
-                         curses.COLOR_BLUE, curses.COLOR_BLACK)
-        curses.init_pair(_ColorPairIndices.MAGENTA.value,
-                         curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-        curses.init_pair(_ColorPairIndices.CYAN.value,
-                         curses.COLOR_CYAN, curses.COLOR_BLACK)
+        curses.init_pair(
+            _ColorPairIndex.RED.value, curses.COLOR_RED, curses.COLOR_BLACK
+        )
+        curses.init_pair(
+            _ColorPairIndex.GREEN.value, curses.COLOR_GREEN, curses.COLOR_BLACK
+        )
+        curses.init_pair(
+            _ColorPairIndex.YELLOW.value,
+            curses.COLOR_YELLOW,
+            curses.COLOR_BLACK,
+        )
+        curses.init_pair(
+            _ColorPairIndex.BLUE.value, curses.COLOR_BLUE, curses.COLOR_BLACK
+        )
+        curses.init_pair(
+            _ColorPairIndex.MAGENTA.value,
+            curses.COLOR_MAGENTA,
+            curses.COLOR_BLACK,
+        )
+        curses.init_pair(
+            _ColorPairIndex.CYAN.value, curses.COLOR_CYAN, curses.COLOR_BLACK
+        )
 
         curses.noecho()
         curses.cbreak()
@@ -172,28 +192,33 @@ class Instance:
         cache.extend((k for k in self.keys))
         self._cached_keys = cache
 
+    def _process_attributes(self, attributes: int) -> int:
+        cleaned_attributes = attributes & _CURSES_ATTRIBUTE_BITMASK
+        if attributes & Attribute.RED:
+            cleaned_attributes |= curses.color_pair(_ColorPairIndex.RED.value)
+        elif attributes & Attribute.GREEN:
+            cleaned_attributes |= curses.color_pair(
+                _ColorPairIndex.GREEN.value
+            )
+        elif attributes & Attribute.YELLOW:
+            cleaned_attributes |= curses.color_pair(
+                _ColorPairIndex.YELLOW.value
+            )
+        elif attributes & Attribute.BLUE:
+            cleaned_attributes |= curses.color_pair(_ColorPairIndex.BLUE.value)
+        elif attributes & Attribute.MAGENTA:
+            cleaned_attributes |= curses.color_pair(
+                _ColorPairIndex.MAGENTA.value
+            )
+        elif attributes & Attribute.CYAN:
+            cleaned_attributes |= curses.color_pair(_ColorPairIndex.CYAN.value)
+        return cleaned_attributes
+
     def write_text(self, x: int, y: int, value: str, attributes: int) -> None:
         try:
-            cleaned_attributes = attributes & _CURSES_ATTRIBUTE_MASK
-            if attributes & Attribute.RED:
-                cleaned_attributes |= curses.color_pair(
-                    _ColorPairIndices.RED.value)
-            elif attributes & Attribute.GREEN:
-                cleaned_attributes |= curses.color_pair(
-                    _ColorPairIndices.GREEN.value)
-            elif attributes & Attribute.YELLOW:
-                cleaned_attributes |= curses.color_pair(
-                    _ColorPairIndices.YELLOW.value)
-            elif attributes & Attribute.BLUE:
-                cleaned_attributes |= curses.color_pair(
-                    _ColorPairIndices.BLUE.value)
-            elif attributes & Attribute.MAGENTA:
-                cleaned_attributes |= curses.color_pair(
-                    _ColorPairIndices.MAGENTA.value)
-            elif attributes & Attribute.CYAN:
-                cleaned_attributes |= curses.color_pair(
-                    _ColorPairIndices.CYAN.value)
-            self._stdscr.addstr(y, x, value, cleaned_attributes)
+            self._stdscr.addstr(
+                y, x, value, self._process_attributes(attributes)
+            )
         except curses.error as exc:
             # writing the last character in the window causes an error
             # because it places the cursor out of bounds and we are

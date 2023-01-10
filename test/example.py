@@ -51,17 +51,29 @@ class Editor:
         line_number_width = 5  # 1 padding + 4 supports up to 9999
         editor_width = width - line_number_width
 
-        self.main_panel.set_rect(
-            line_number_width, editor_top, editor_width, editor_height
+        self.main_panel.rect = (
+            line_number_width,
+            editor_top,
+            editor_width,
+            editor_height,
         )
-        self.line_number_panel.set_rect(
-            0, editor_top, line_number_width, editor_height
+        self.line_number_panel.rect = (
+            0,
+            editor_top,
+            line_number_width,
+            editor_height,
         )
-        self.help_panel.set_rect(
-            0, editor_top + editor_height, width, help_panel_height
+        self.help_panel.rect = (
+            0,
+            editor_top + editor_height,
+            width,
+            help_panel_height,
         )
-        self.help_panel.styleline(
-            1, attributes=tuindow.STANDOUT | tuindow.BOLD | tuindow.YELLOW, padding=-1)
+        self.help_panel.styleln(
+            1,
+            attributes=tuindow.STANDOUT | tuindow.BOLD | tuindow.YELLOW,
+            padding=-1,
+        )
         self.update_help_display()
         self.update_line_numbers()
         self.update_editor_window()
@@ -82,9 +94,9 @@ class Editor:
         # at the given display index
         line_index = self.offset + display_index
         if line_index < len(self.lines):
-            self.main_panel.writeline(display_index, self.lines[line_index])
+            self.main_panel.writeln(display_index, self.lines[line_index])
         else:
-            self.main_panel.clearline(display_index)
+            self.main_panel.clearln(display_index)
 
     def up(self) -> None:
         try:
@@ -121,11 +133,11 @@ class Editor:
         return returnval
 
     def insert_line(self, display_index: int, value: str) -> None:
-        self.main_panel.insertline(display_index, value)
+        self.main_panel.insertln(display_index, value)
         self.lines.insert(self.offset + display_index, value)
 
     def delete_cursor_line(self) -> None:
-        self.main_panel.deleteline(self.main_panel.cursor.line)
+        self.main_panel.deleteln(self.main_panel.cursor.line)
         del self.lines[self.absolute_line]
 
     def backspace(self) -> None:
@@ -140,12 +152,12 @@ class Editor:
         # the very beginning of the line and we should wrap up
 
         # delete line and shift data
-        trailing_line = self.cursor.consume()
+        trailing_line = self.cursor.consume_line()
         self.delete_cursor_line()
 
         # if the file extends beyond the screen then we have to fill
         # in the bottom line that is opened up from previous deletion
-        self.write_from_file_data(self.main_panel.height-1)
+        self.write_from_file_data(self.main_panel.height - 1)
 
         # paste remainder to end of previous line (remembering the proper index)
         self.up()
@@ -164,25 +176,23 @@ class Editor:
         for i in range(self.main_panel.height):
             line_index = i + self.offset
             if line_index < len(self.lines):
-                self.main_panel.writeline(i, self.lines[line_index])
+                self.main_panel.writeln(i, self.lines[line_index])
             else:
-                self.main_panel.clearline(i)
+                self.main_panel.clearln(i)
 
     def update_help_display(self):
         if self.mode == Mode.EDIT:
-            self.help_panel.writeline(1, "EDIT MODE:   " + self.EDIT_HELP)
+            self.help_panel.writeln(1, "EDIT MODE:   " + self.EDIT_HELP)
         else:
-            self.help_panel.writeline(
-                1, "COMMAND MODE:   " + self.COMMAND_HELP
-            )
+            self.help_panel.writeln(1, "COMMAND MODE:   " + self.COMMAND_HELP)
 
     def update_line_numbers(self):
         for i in range(self.line_number_panel.height):
             number = i + 1 + self.offset
             if number > len(self.lines):
-                self.line_number_panel.clearline(i)
+                self.line_number_panel.clearln(i)
             else:
-                self.line_number_panel.writeline(i, str(number))
+                self.line_number_panel.writeln(i, str(number))
 
     @property
     def absolute_line(self) -> int:
@@ -277,7 +287,7 @@ editor = Editor(args.filename)
 
 with tuindow.init(editor.layout):
     while 1:
-        editor.main_panel.cursor.set_active()
+        tuindow.set_active_cursor(editor.main_panel.cursor)
 
         for key in tuindow.keys():
             editor.handle_key(key)

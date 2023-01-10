@@ -12,13 +12,11 @@ class Overscroll(Exception):
 
 
 class Cursor:
-    active: Optional["Cursor"]
-    _maxline: Optional[int] = None
-
     def __init__(
         self,
         index: int,
         line: int,
+        maxline: int,
         readline: Callable[[int], str],
         writeline: Callable[[int, str], None],
     ):
@@ -26,26 +24,19 @@ class Cursor:
         self._line = line
         self._readline = lambda: readline(self.line)
         self._writeline = lambda v: writeline(self.line, v)
+        self._maxline = maxline
 
     def __repr__(self) -> str:
         return f"<Cursor line={self.line} index={self.index}>"
-
-    @classmethod
-    def clear_active(cls):
-        cls.active = None
-
-    def set_active(self) -> None:
-        Cursor.active = self
 
     @property
     def maxline(self) -> Optional[int]:
         return self._maxline
 
     @maxline.setter
-    def maxline(self, value: Optional[int]) -> None:
+    def maxline(self, value: int) -> None:
         self._maxline = value
-        if self._maxline is not None:
-            self.line = min(self.line, self._maxline)
+        self.line = min(self.line, self._maxline)
 
     @property
     def index(self) -> int:
@@ -69,8 +60,13 @@ class Cursor:
 
     @line.setter
     def line(self, value: int) -> None:
-        validation.not_negative("Cursor.line", value)
         current = self._line
+
+        if value < 0:
+            value = max(0, self._maxline + 1 + value)
+        else:
+            value = min(value, self._maxline)
+
         self._line = value
         if value != current:
             self.index = self.index
@@ -126,11 +122,9 @@ class Cursor:
         self._writeline(current[: self._index] + current[self._index + n :])
         return current[self._index : self._index + n]
 
-    def consume(self) -> str:
-        current = self._readline()
-        self._writeline("")
-        self._index = 0
-        return current
+    def consume_line(self) -> str:
+        self.index = 0
+        return self.delete(-1)
 
     def pan(self, display_length: int) -> str:
         data = self._readline()
@@ -153,13 +147,13 @@ class Cursor:
 
     def up(self, n: int = 1) -> None:
         validation.not_negative("Cursor.up n", n)
-        newline = self.line - n
-        if newline < 0:
-            over = 0 - newline
+        new_line_index = self.line - n
+        if new_line_index < 0:
+            over = 0 - new_line_index
             self.line = 0
             raise Overscroll(over)
         else:
-            self.line = newline
+            self.line = new_line_index
 
     def down(self, n: int = 1) -> None:
         validation.not_negative("Cursor.down n", n)
@@ -168,10 +162,10 @@ class Cursor:
             self.line += n
             return
 
-        newline = self.line + n
-        over = newline - self.maxline
+        new_line_index = self.line + n
+        over = new_line_index - self.maxline
         if over > 0:
             self.line = self.maxline
             raise Overscroll(over)
         else:
-            self.line = newline
+            self.line = new_line_index

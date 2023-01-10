@@ -66,7 +66,7 @@ def test_special_width_height_initial_values_negative_1_means_dont_initialize_ye
         p.left = 0
 
     # if we set the entire rect using valid width and height everything should be ok
-    p.set_rect(0, 0, 1, 1)
+    p.rect = (0, 0, 1, 1)
 
 
 @params(
@@ -117,33 +117,33 @@ def test_bad_height_reconfiguration(new_height, panel, expect_error):
         panel.height = new_height
 
 
-def test_writeline():
+def test_writeln():
     panel = Panel(0, 0, 10, 2)
 
-    panel.writeline(0, "testing1")
-    panel.writeline(1, "testing2")
+    panel.writeln(0, "testing1")
+    panel.writeln(1, "testing2")
 
     assert panel[0].data == "testing1"
     assert panel[1].data == "testing2"
 
 
-def test_readline():
+def test_readln():
     panel = Panel(0, 0, 10, 2)
 
     panel[0].data = "testing1"
     panel[1].data = "testing2"
 
-    assert panel.readline(0) == "testing1"
-    assert panel.readline(1) == "testing2"
+    assert panel.readln(0) == "testing1"
+    assert panel.readln(1) == "testing2"
 
 
-def test_styleline():
+def test_styleln():
     panel = Panel(0, 0, 10, 2)
     style1 = structs.Style(fill="1")
     style2 = structs.Style(fill="2")
 
-    panel.styleline(0, style1)
-    panel.styleline(1, style2)
+    panel.styleln(0, style1)
+    panel.styleln(1, style2)
 
     assert panel[0].style == style1
     assert panel[1].style == style2
@@ -153,7 +153,7 @@ def test_available():
     panel = Panel(0, 0, 10, 3)
     assert panel.available == 3
 
-    panel.writeline(1, "abc")
+    panel.writeln(1, "abc")
 
     assert panel.available == 2
 
@@ -162,10 +162,10 @@ def test_availability_determined_by_empty_string():
     panel = Panel(0, 0, 10, 3)
     assert panel.available == 3
 
-    panel.writeline(0, "abc")
+    panel.writeln(0, "abc")
     assert panel.available == 2
 
-    panel.writeline(1, "")
+    panel.writeln(1, "")
     assert panel.available == 2
 
 
@@ -173,8 +173,8 @@ def test_first_available_returns_index():
     panel = Panel(0, 0, 10, 3)
     assert panel.first_available == 0
 
-    panel.writeline(0, "abc")
-    panel.writeline(1, "abc")
+    panel.writeln(0, "abc")
+    panel.writeln(1, "abc")
     assert panel.first_available == 2
 
 
@@ -182,8 +182,8 @@ def test_first_available_returns_none():
     panel = Panel(0, 0, 10, 2)
     assert panel.first_available == 0
 
-    panel.writeline(0, "abc")
-    panel.writeline(1, "abc")
+    panel.writeln(0, "abc")
+    panel.writeln(1, "abc")
 
     assert panel.first_available is None
 
@@ -191,37 +191,37 @@ def test_first_available_returns_none():
 def test_available_again_after_clear():
     panel = Panel(0, 0, 10, 3)
 
-    panel.writeline(0, "abc")
+    panel.writeln(0, "abc")
     assert panel.first_available == 1
 
-    panel.writeline(0, "")
+    panel.writeln(0, "")
     assert panel.first_available == 0
 
 
-def test_clearline():
+def test_clearln():
     panel = Panel(0, 0, 10, 3)
 
-    panel.writeline(0, "abc")
-    assert panel.readline(0) == "abc"
+    panel.writeln(0, "abc")
+    assert panel.readln(0) == "abc"
 
-    panel.clearline(0)
-    assert panel.readline(0) == ""
+    panel.clearln(0)
+    assert panel.readln(0) == ""
 
 
 def test_first_available_after_clear():
     panel = Panel(0, 0, 10, 5)
 
     for i in range(5):
-        panel.writeline(i, "abc")
+        panel.writeln(i, "abc")
 
-    panel.clearline(4)
-    panel.clearline(1)
-    panel.clearline(3)
+    panel.clearln(4)
+    panel.clearln(1)
+    panel.clearln(3)
 
     assert panel.first_available == 1
-    panel.writeline(1, "a")
+    panel.writeln(1, "a")
     assert panel.first_available == 3
-    panel.writeline(3, "a")
+    panel.writeln(3, "a")
     assert panel.first_available == 4
 
 
@@ -231,8 +231,8 @@ def test_write_if_available_when_available():
     panel.write_if_available("abc")
     panel.write_if_available("bcd")
 
-    assert panel.readline(0) == "abc"
-    assert panel.readline(1) == "bcd"
+    assert panel.readln(0) == "abc"
+    assert panel.readln(1) == "bcd"
 
 
 def test_write_if_available_when_not_available():
@@ -243,8 +243,8 @@ def test_write_if_available_when_not_available():
     # does nothing
     panel.write_if_available("cde")
 
-    assert panel.readline(0) == "abc"
-    assert panel.readline(1) == "bcd"
+    assert panel.readln(0) == "abc"
+    assert panel.readln(1) == "bcd"
 
 
 def test_default_default_style():
@@ -272,7 +272,7 @@ def test_updating_default_style_doesnt_update_existing_lines():
     style3 = structs.Style(fill="#")
     panel = Panel(0, 0, 10, 2, default_style=style1)
 
-    panel.styleline(0, style3)
+    panel.styleln(0, style3)
     panel.set_default_style(style2)
 
     assert panel[0].style == style3
@@ -286,8 +286,8 @@ def test_cursor():
     panel.cursor.line = 1
     panel.cursor.insert("def")
 
-    assert panel.readline(0) == "abc"
-    assert panel.readline(1) == "def"
+    assert panel.readln(0) == "abc"
+    assert panel.readln(1) == "def"
 
 
 def test_cursor_raises_overscroll_errors_by_default():
@@ -301,7 +301,7 @@ def test_cursor_raises_overscroll_errors_by_default():
 
 def test_cursor_raises_overscroll_errors_by_default_across_size_change():
     panel = Panel(0, 0, 10, 2)
-    panel.set_rect(0, 0, 10, 3)
+    panel.rect = (0, 0, 10, 3)
 
     with pytest.raises(cursor.Overscroll) as excinfo:
         panel.cursor.down(4)
@@ -311,80 +311,80 @@ def test_cursor_raises_overscroll_errors_by_default_across_size_change():
 
 def test_shift_up():
     panel = Panel(0, 0, 10, 3)
-    panel.writeline(0, "0")
-    panel.writeline(1, "1")
-    panel.writeline(2, "2")
+    panel.writeln(0, "0")
+    panel.writeln(1, "1")
+    panel.writeln(2, "2")
 
     panel.shift_up()
 
-    assert panel.readline(0) == "1"
-    assert panel.readline(1) == "2"
-    assert panel.readline(2) == ""
+    assert panel.readln(0) == "1"
+    assert panel.readln(1) == "2"
+    assert panel.readln(2) == ""
 
 
 def test_shift_up_multiple():
     panel = Panel(0, 0, 10, 3)
-    panel.writeline(0, "0")
-    panel.writeline(1, "1")
-    panel.writeline(2, "2")
+    panel.writeln(0, "0")
+    panel.writeln(1, "1")
+    panel.writeln(2, "2")
 
     panel.shift_up(2)
 
-    assert panel.readline(0) == "2"
-    assert panel.readline(1) == ""
-    assert panel.readline(2) == ""
+    assert panel.readln(0) == "2"
+    assert panel.readln(1) == ""
+    assert panel.readln(2) == ""
 
 
 def test_shift_up_overflow():
     panel = Panel(0, 0, 10, 3)
-    panel.writeline(0, "0")
-    panel.writeline(1, "1")
-    panel.writeline(2, "2")
+    panel.writeln(0, "0")
+    panel.writeln(1, "1")
+    panel.writeln(2, "2")
 
     panel.shift_up(1000)
 
-    assert panel.readline(0) == ""
-    assert panel.readline(1) == ""
-    assert panel.readline(2) == ""
+    assert panel.readln(0) == ""
+    assert panel.readln(1) == ""
+    assert panel.readln(2) == ""
 
 
 def test_shift_down():
     panel = Panel(0, 0, 10, 3)
-    panel.writeline(0, "0")
-    panel.writeline(1, "1")
-    panel.writeline(2, "2")
+    panel.writeln(0, "0")
+    panel.writeln(1, "1")
+    panel.writeln(2, "2")
 
     panel.shift_down()
 
-    assert panel.readline(0) == ""
-    assert panel.readline(1) == "0"
-    assert panel.readline(2) == "1"
+    assert panel.readln(0) == ""
+    assert panel.readln(1) == "0"
+    assert panel.readln(2) == "1"
 
 
 def test_shift_down_multiple():
     panel = Panel(0, 0, 10, 3)
-    panel.writeline(0, "0")
-    panel.writeline(1, "1")
-    panel.writeline(2, "2")
+    panel.writeln(0, "0")
+    panel.writeln(1, "1")
+    panel.writeln(2, "2")
 
     panel.shift_down(2)
 
-    assert panel.readline(0) == ""
-    assert panel.readline(1) == ""
-    assert panel.readline(2) == "0"
+    assert panel.readln(0) == ""
+    assert panel.readln(1) == ""
+    assert panel.readln(2) == "0"
 
 
 def test_shift_down_overflow():
     panel = Panel(0, 0, 10, 3)
-    panel.writeline(0, "0")
-    panel.writeline(1, "1")
-    panel.writeline(2, "2")
+    panel.writeln(0, "0")
+    panel.writeln(1, "1")
+    panel.writeln(2, "2")
 
     panel.shift_down(1000)
 
-    assert panel.readline(0) == ""
-    assert panel.readline(1) == ""
-    assert panel.readline(2) == ""
+    assert panel.readln(0) == ""
+    assert panel.readln(1) == ""
+    assert panel.readln(2) == ""
 
 
 @params(
@@ -397,9 +397,9 @@ def test_shift_down_overflow():
 def test_insert_line(index, value, expected):
     panel = Panel(0, 0, 5, 3)
     for i in range(3):
-        panel.writeline(i, str(i))
+        panel.writeln(i, str(i))
 
-    panel.insertline(index, value)
+    panel.insertln(index, value)
 
     for i, ln in enumerate(panel):
         assert ln.data == expected[i]
@@ -414,9 +414,9 @@ def test_insert_line(index, value, expected):
 def test_delete_line(index, expected):
     panel = Panel(0, 0, 5, 3)
     for i in range(3):
-        panel.writeline(i, str(i))
+        panel.writeln(i, str(i))
 
-    panel.deleteline(index)
+    panel.deleteln(index)
 
     for i, ln in enumerate(panel):
         assert ln.data == expected[i]
