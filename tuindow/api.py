@@ -13,7 +13,6 @@ from .window import Window
 from .cursor import Cursor
 from .cursor import Overscroll
 
-
 __all__ = (
     "TuindowError",
     "init",
@@ -50,6 +49,12 @@ __all__ = (
     "UNDERLINE",
     "PRINTABLE",
     "Overscroll",
+    "RED",
+    "GREEN",
+    "YELLOW",
+    "BLUE",
+    "MAGENTA",
+    "CYAN",
 )
 
 PRINTABLE = set(c for c in string.printable)
@@ -76,12 +81,19 @@ RIGHT = _backend.SpecialKeys.RIGHT
 UP = _backend.SpecialKeys.UP
 
 Attribute = _backend.Attribute
-BLINK = _backend.Attribute.BLINK
-BOLD = _backend.Attribute.BOLD
-DIM = _backend.Attribute.DIM
-REVERSE = _backend.Attribute.REVERSE
-STANDOUT = _backend.Attribute.STANDOUT
-UNDERLINE = _backend.Attribute.UNDERLINE
+BLINK = Attribute.BLINK
+BOLD = Attribute.BOLD
+DIM = Attribute.DIM
+REVERSE = Attribute.REVERSE
+STANDOUT = Attribute.STANDOUT
+UNDERLINE = Attribute.UNDERLINE
+
+RED = Attribute.RED
+GREEN = Attribute.GREEN
+YELLOW = Attribute.YELLOW
+BLUE = Attribute.BLUE
+MAGENTA = Attribute.MAGENTA
+CYAN = Attribute.CYAN
 
 
 class Clock:

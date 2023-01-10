@@ -5,12 +5,17 @@ from typing import Optional
 from typing import Dict
 from typing import Tuple
 
+import os
 import enum
 import curses
 import string
 import collections
 
 from curses import ascii
+
+
+_TUINDOW_ATTRIBUTE_BITS_START = 1 << 64
+_CURSES_ATTRIBUTE_MASK = _TUINDOW_ATTRIBUTE_BITS_START - 1
 
 
 class Attribute:
@@ -20,6 +25,16 @@ class Attribute:
     REVERSE = curses.A_REVERSE
     STANDOUT = curses.A_STANDOUT
     UNDERLINE = curses.A_UNDERLINE
+
+    # initialization not available until curses is initialized
+    # so I'm storing color attributes in higher order bits to
+    # be converted to curses color pairs at draw time
+    RED = _TUINDOW_ATTRIBUTE_BITS_START
+    GREEN = _TUINDOW_ATTRIBUTE_BITS_START << 1
+    YELLOW = _TUINDOW_ATTRIBUTE_BITS_START << 2
+    BLUE = _TUINDOW_ATTRIBUTE_BITS_START << 3
+    MAGENTA = _TUINDOW_ATTRIBUTE_BITS_START << 4
+    CYAN = _TUINDOW_ATTRIBUTE_BITS_START << 5
 
 
 class SpecialKeys(enum.Enum):
@@ -77,6 +92,15 @@ class CursesError(Exception):
     pass
 
 
+class _ColorPairIndices(enum.Enum):
+    RED = 1
+    GREEN = 2
+    YELLOW = 3
+    BLUE = 4
+    MAGENTA = 5
+    CYAN = 6
+
+
 class Instance:
     _stdscr: curses.window
     _resize_callback: Callable[[int, int], None]
@@ -91,10 +115,26 @@ class Instance:
         return f"<Curses instance  size={self.size!r}>"
 
     def __enter__(self) -> "Instance":
+        os.environ.setdefault("ESCDELAY", "100")
         self._stdscr = curses.initscr()
         self._stdscr.keypad(True)
         self._stdscr.nodelay(True)
+
         curses.start_color()
+
+        curses.init_pair(_ColorPairIndices.RED.value,
+                         curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(_ColorPairIndices.GREEN.value,
+                         curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(_ColorPairIndices.YELLOW.value,
+                         curses.COLOR_YELLOW, curses.COLOR_BLACK)
+        curses.init_pair(_ColorPairIndices.BLUE.value,
+                         curses.COLOR_BLUE, curses.COLOR_BLACK)
+        curses.init_pair(_ColorPairIndices.MAGENTA.value,
+                         curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+        curses.init_pair(_ColorPairIndices.CYAN.value,
+                         curses.COLOR_CYAN, curses.COLOR_BLACK)
+
         curses.noecho()
         curses.cbreak()
         curses.curs_set(0)
@@ -132,9 +172,28 @@ class Instance:
         cache.extend((k for k in self.keys))
         self._cached_keys = cache
 
-    def write_text(self, x: int, y: int, value: str, *args) -> None:
+    def write_text(self, x: int, y: int, value: str, attributes: int) -> None:
         try:
-            self._stdscr.addstr(y, x, value, *args)
+            cleaned_attributes = attributes & _CURSES_ATTRIBUTE_MASK
+            if attributes & Attribute.RED:
+                cleaned_attributes |= curses.color_pair(
+                    _ColorPairIndices.RED.value)
+            elif attributes & Attribute.GREEN:
+                cleaned_attributes |= curses.color_pair(
+                    _ColorPairIndices.GREEN.value)
+            elif attributes & Attribute.YELLOW:
+                cleaned_attributes |= curses.color_pair(
+                    _ColorPairIndices.YELLOW.value)
+            elif attributes & Attribute.BLUE:
+                cleaned_attributes |= curses.color_pair(
+                    _ColorPairIndices.BLUE.value)
+            elif attributes & Attribute.MAGENTA:
+                cleaned_attributes |= curses.color_pair(
+                    _ColorPairIndices.MAGENTA.value)
+            elif attributes & Attribute.CYAN:
+                cleaned_attributes |= curses.color_pair(
+                    _ColorPairIndices.CYAN.value)
+            self._stdscr.addstr(y, x, value, cleaned_attributes)
         except curses.error as exc:
             # writing the last character in the window causes an error
             # because it places the cursor out of bounds and we are
@@ -151,7 +210,7 @@ class Instance:
                     f"    {self!r}\n"
                     f"    write_location={x=!r}, {y=!r}\n"
                     f"    {value=!r}\n"
-                    f"    {args=!r}\n"
+                    f"    {attributes=!r}\n"
                     f"    internal error: {str(exc)}"
                 )
 

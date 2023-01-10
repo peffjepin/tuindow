@@ -22,7 +22,7 @@ class Editor:
         # but we don't know how large the rects should be at this moment
         self.main_panel = tuindow.Panel(padding=1)
         self.line_number_panel = tuindow.Panel(
-            padding=(1, -1), attributes=tuindow.DIM
+            padding=(1, -1), attributes=tuindow.DIM | tuindow.YELLOW
         )
         self.help_panel = tuindow.Panel(padding=-1)
 
@@ -60,7 +60,8 @@ class Editor:
         self.help_panel.set_rect(
             0, editor_top + editor_height, width, help_panel_height
         )
-        self.help_panel.styleline(1, attributes=tuindow.STANDOUT, padding=-1)
+        self.help_panel.styleline(
+            1, attributes=tuindow.STANDOUT | tuindow.BOLD | tuindow.YELLOW, padding=-1)
         self.update_help_display()
         self.update_line_numbers()
         self.update_editor_window()
@@ -72,7 +73,7 @@ class Editor:
 
         # We will have to persist line data on our own aswell.
         # If we call this after all state changes we will stay synced.
-        while self.absolute_line < len(self.lines) - 1:
+        while self.absolute_line > len(self.lines) - 1:
             self.lines.append("")
         self.lines[self.absolute_line] = self.cursor.data
 
