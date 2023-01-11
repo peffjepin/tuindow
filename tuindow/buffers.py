@@ -9,6 +9,7 @@ from typing import Union
 from typing import List
 from typing import overload
 
+from . import _backend
 from . import structs
 from . import validation
 from . import cursor
@@ -381,6 +382,15 @@ class Panel:
             ln.style = structs.Style.from_keywords(**kwargs)
         else:
             ln.style = style
+
+    def colorln(self, index: int, color_bit: int) -> None:
+        """
+        Sets the color attribute bit for Line object at the given index,
+        clearing any existing color thats already been set.
+        """
+
+        ln = self[index]
+        ln.attributes = _backend.set_color_bit(ln.attributes, color_bit)
 
     def shift_up(self, n: int = 1) -> None:
         """

@@ -4,6 +4,7 @@ import pytest
 
 from tuindow import Panel
 from tuindow import structs
+from tuindow import AttributeBit
 from tuindow import cursor
 
 
@@ -407,3 +408,34 @@ def test_delete_line(index, expected):
 
     for i, ln in enumerate(panel):
         assert ln.data == expected[i]
+
+
+def test_color_line():
+    panel = Panel(0, 0, 5, 1)
+    panel.colorln(0, AttributeBit.RED)
+
+    assert panel[0].attributes & AttributeBit.RED
+
+
+def test_color_line_keeps_other_attributes_intact():
+    panel = Panel(0, 0, 5, 1, attributes=AttributeBit.BOLD)
+    panel.colorln(0, AttributeBit.RED)
+
+    assert panel[0].attributes & AttributeBit.RED
+    assert panel[0].attributes & AttributeBit.BOLD
+
+
+def test_color_line_removes_existing_color_bit():
+    panel = Panel(0, 0, 5, 1)
+    panel.colorln(0, AttributeBit.RED)
+    panel.colorln(0, AttributeBit.GREEN)
+
+    assert not panel[0].attributes & AttributeBit.RED
+    assert panel[0].attributes & AttributeBit.GREEN
+
+
+def test_color_line_not_a_color(expect_error):
+    panel = Panel(0, 0, 5, 1)
+
+    with expect_error(ValueError, "AttributeBit"):
+        panel.colorln(0, 999)

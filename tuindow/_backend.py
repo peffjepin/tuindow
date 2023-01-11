@@ -55,6 +55,31 @@ class AttributeBit:
     CYAN = _new_attribute_bit()
 
 
+_COLOR_ATTRIBUTES_BITMASK = (
+    (AttributeBit.CYAN << 1) - 1
+) ^ _CURSES_ATTRIBUTE_BITMASK
+
+_COLOR_BITS = set(
+    (
+        AttributeBit.RED,
+        AttributeBit.GREEN,
+        AttributeBit.BLUE,
+        AttributeBit.MAGENTA,
+        AttributeBit.CYAN,
+    )
+)
+
+
+def set_color_bit(attributes: int, color_bit: int) -> int:
+    if color_bit not in _COLOR_BITS:
+        raise ValueError(
+            "`color_bit` must be a color from the AttributeBit namespace"
+        )
+    cleaned = attributes & ~_COLOR_ATTRIBUTES_BITMASK
+    cleaned |= color_bit
+    return cleaned
+
+
 class SpecialKeys(enum.Enum):
     """
     Keys that aren't represented by their corresponding single character.
