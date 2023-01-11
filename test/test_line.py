@@ -1,5 +1,6 @@
 from .conftest import params
 
+from tuindow._backend import AttributeBit
 from tuindow.buffers import Line
 from tuindow.structs import Style
 
@@ -67,6 +68,7 @@ def test_display(kwargs, expected):
     ("length", 2),
     ("padding", (1, 2)),
     ("padding_fills", "."),
+    ("attributes", AttributeBit.BOLD),
 )
 def test_dirty_on_state_change(attr, value):
     ln = Line(10)
@@ -74,6 +76,24 @@ def test_dirty_on_state_change(attr, value):
 
     setattr(ln, attr, value)
     assert ln.dirty
+
+
+@params(
+    "attr,value",
+    ("fill", "!"),
+    ("data", "abc"),
+    ("length", 2),
+    ("padding", (1, 2)),
+    ("padding_fills", "."),
+    ("attributes", AttributeBit.BOLD),
+)
+def test_not_dirty_when_state_doesnt_actually_change(attr, value):
+    ln = Line(10)
+    setattr(ln, attr, value)
+    ln.dirty = False
+
+    setattr(ln, attr, value)
+    assert not ln.dirty
 
 
 @params("length", 0, -1)
@@ -154,14 +174,3 @@ def test_insufficient_padding_space_error_when_line_length_changed(
 
     with expect_error(ValueError, "padding", "length", repr(2), repr((1, 2))):
         ln.length = 2
-
-
-def test_style_not_changed_when_locked():
-    style1 = Style(fill="1")
-    style2 = Style(fill="2")
-
-    line = Line(1, style=style1)
-    line.style_locked = True
-    line.style = style2
-
-    assert line.style is style1

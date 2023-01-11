@@ -111,6 +111,20 @@ class Style(NamedTuple):
     fill: str = " "
     attributes: int = 0
 
+    def padding_fills_equal(
+        self, new_fills: Union[str, Tuple[str, str]]
+    ) -> bool:
+        if isinstance(new_fills, str):
+            new_fills = (new_fills, new_fills)
+        return new_fills == self.padding.fills
+
+    def padding_values_equal(
+        self, new_values: Union[int, Tuple[int, int]]
+    ) -> bool:
+        if isinstance(new_values, int):
+            new_values = (new_values, new_values)
+        return new_values == self.padding.values
+
     @classmethod
     def from_keywords(
         cls,

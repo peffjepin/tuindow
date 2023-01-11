@@ -23,12 +23,11 @@ class Line:
     """
 
     dirty: bool = True
-    style_locked: bool = False
 
     _display: str = ""
     _data: str = ""
     _style: structs.Style = structs.Style()
-    _length: int
+    _length: int = 1
 
     def __init__(
         self,
@@ -72,11 +71,8 @@ class Line:
     @style.setter
     def style(self, style: structs.Style) -> None:
         """
-        Sets the lines style configuration if self.style_locked is not set to True.
+        Sets the lines style configuration.
         """
-
-        if self.style_locked:
-            return
 
         with validation.pool(ValueError):
             validation.length_one_string("fill style", style.fill)
@@ -95,18 +91,18 @@ class Line:
         return self._style.padding.fills
 
     @padding_fills.setter
-    def padding_fills(
-        self, value: Optional[Union[str, Tuple[str, str]]]
-    ) -> None:
+    def padding_fills(self, value: Union[str, Tuple[str, str]]) -> None:
         """
         see: tuindow.structs.Style.from_keywords
         """
 
-        self.style = structs.Style.from_keywords(
-            fill=self.fill,
-            padding=self.padding,
-            padding_fills=value,
-        )
+        if not self.style.padding_fills_equal(value):
+            self.style = structs.Style.from_keywords(
+                fill=self.fill,
+                padding=self.padding,
+                padding_fills=value,
+                attributes=self.attributes,
+            )
 
     @property
     def padding(self) -> Tuple[int, int]:
@@ -122,9 +118,13 @@ class Line:
         see: tuindow.structs.Style.from_keywords
         """
 
-        self.style = structs.Style.from_keywords(
-            fill=self.fill, padding=value, padding_fills=self.padding_fills
-        )
+        if not self.style.padding_values_equal(value):
+            self.style = structs.Style.from_keywords(
+                fill=self.fill,
+                padding=value,
+                padding_fills=self.padding_fills,
+                attributes=self.attributes,
+            )
 
     @property
     def fill(self) -> str:
@@ -140,9 +140,27 @@ class Line:
         see: tuindow.structs.Style.from_keywords
         """
 
-        self.style = structs.Style.from_keywords(
-            fill=value, padding=self.padding, padding_fills=self.padding_fills
-        )
+        if self.style.fill != value:
+            self.style = structs.Style.from_keywords(
+                fill=value,
+                padding=self.padding,
+                padding_fills=self.padding_fills,
+                attributes=self.attributes,
+            )
+
+    @property
+    def attributes(self) -> int:
+        return self.style.attributes
+
+    @attributes.setter
+    def attributes(self, value: int) -> None:
+        if self.style.attributes != value:
+            self.style = structs.Style.from_keywords(
+                fill=self.fill,
+                padding=self.padding,
+                padding_fills=self.padding_fills,
+                attributes=value,
+            )
 
     @property
     def data(self) -> str:
@@ -158,8 +176,9 @@ class Line:
         Sets the raw data representation.
         """
 
-        self._data = value
-        self._update_display()
+        if self._data != value:
+            self._data = value
+            self._update_display()
 
     @property
     def length(self) -> int:
@@ -176,11 +195,12 @@ class Line:
         configuration will be valid.
         """
 
-        with validation.pool(ValueError):
-            validation.greater_than_x("Line length", value, 0)
-            validation.padding_overflow(self.style.padding, value)
-        self._length = value
-        self._update_display()
+        if self._length != value:
+            with validation.pool(ValueError):
+                validation.greater_than_x("Line length", value, 0)
+                validation.padding_overflow(self.style.padding, value)
+            self._length = value
+            self._update_display()
 
     @property
     def display(self) -> str:
@@ -354,19 +374,13 @@ class Panel:
     def styleln(self, index: int, style=None, **kwargs) -> None:
         """
         Sets the style for the Line object in the panel at the given index.
-
-        This sets the `style_locked` attribute on the line so if this panel's
-        default style is changed, lines styled through this method will be
-        unaffected.
         """
 
         ln = self[index]
-        ln.style_locked = False
         if style is None:
             ln.style = structs.Style.from_keywords(**kwargs)
         else:
             ln.style = style
-        ln.style_locked = True
 
     def shift_up(self, n: int = 1) -> None:
         """
@@ -439,10 +453,10 @@ class Panel:
         self, style: Optional[structs.Style] = None, **kwargs
     ) -> None:
         """
-        Sets the default style for this Panel.
+        Sets the default style for this Panel and sets the style of
+        all lines in the panel to this new style.
 
-        All Line objects in this panel will be updated unless their
-        `style_locked` attribute is set.
+        This overwrites any style modifications made to individual lines
 
         style:
             given through this parameter or as **kwargs
