@@ -313,6 +313,8 @@ def _unsafe_draw(*panels: Panel) -> None:
     global _window
     assert _instance
 
+    active_cursor_drawn = False
+
     for panel in panels:
         dirty = _window.draw(panel.display_rect)
         for i, line in enumerate(panel):
@@ -327,8 +329,9 @@ def _unsafe_draw(*panels: Panel) -> None:
 
         if _active_cursor is panel.cursor:
             _handle_active_cursor(panel, panel.cursor)
+            active_cursor_drawn = True
 
-    if _active_cursor is None:
+    if not active_cursor_drawn:
         _instance.disable_cursor()
 
 

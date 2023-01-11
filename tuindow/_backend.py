@@ -134,17 +134,42 @@ class _ColorPairIndex(enum.Enum):
     CYAN = 6
 
 
+class _CursorVisualState:
+    def __init__(self):
+        self._current_curses_value = -1
+        self._curses_value = 0
+        self._x = 0
+        self._y = 0
+
+    def enable(self) -> None:
+        self._curses_value = 1
+
+    def disable(self) -> None:
+        self._curses_value = 0
+
+    def move(self, x: int, y: int):
+        self._x = x
+        self._y = y
+
+    def draw(self, stdscr: curses.window):
+        if self._curses_value != self._current_curses_value:
+            curses.curs_set(self._curses_value)
+            self._current_curses_value = self._curses_value
+        stdscr.move(self._y, self._x)
+
+
 class Instance:
     """
     An object that encapsules curses funtionality.
     """
 
     _stdscr: curses.window
+    _cursor_display: _CursorVisualState
     _resize_callback: Callable[[int, int], None]
     _cached_keys: Optional[Deque[str]]
-    _cursor_enabled: bool = False
 
     def __init__(self, resize_callback: Callable[[int, int], None]):
+        self._cursor_display = _CursorVisualState()
         self._resize_callback = resize_callback
         self._cached_keys = collections.deque()
 
@@ -188,10 +213,9 @@ class Instance:
 
         curses.noecho()
         curses.cbreak()
-        curses.curs_set(0)
-        self._cursor_enabled = False
+        self._cursor_display.disable()
         self._stdscr.clear()
-        self._stdscr.refresh()
+        self.update_display()
         return self
 
     def __exit__(self, *_) -> None:
@@ -242,17 +266,15 @@ class Instance:
         self._cached_keys = cache
 
     def update_display(self) -> None:
+        self._cursor_display.draw(self._stdscr)
         self._stdscr.refresh()
 
     def draw_cursor(self, x: int, y: int) -> None:
-        if not self._cursor_enabled:
-            curses.curs_set(1)
-            self._cursor_enabled = True
-        self._stdscr.move(y, x)
+        self._cursor_display.enable()
+        self._cursor_display.move(x, y)
 
     def disable_cursor(self) -> None:
-        curses.curs_set(0)
-        self._cursor_enabled = False
+        self._cursor_display.disable()
 
     def write_text(self, x: int, y: int, value: str, attributes: int) -> None:
         """
