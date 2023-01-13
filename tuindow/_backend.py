@@ -83,8 +83,6 @@ def set_color_bit(attributes: int, color_bit: int) -> int:
 class SpecialKeys(enum.Enum):
     """
     Keys that aren't represented by their corresponding single character.
-
-    TODO: This could be expanded, but suits my purposes currently
     """
 
     BACKSPACE = "BACKSPACE"
@@ -107,6 +105,93 @@ class SpecialKeys(enum.Enum):
     RIGHT = "RIGHT"
     UP = "UP"
     DELETE = "DELETE"
+    ENTER = "\n"
+    TAB = "\t"
+    INSERT = "INSERT"
+    HOME = "HOME"
+    END = "END"
+    PAGE_UP = "PAGE_UP"
+    PAGE_DOWN = "PAGE_DOWN"
+    KEY_BREAK = "Break key (unreliable)"
+    KEY_DL = "Delete line"
+    KEY_IL = "Insert line"
+    KEY_EIC = "Exit insert char mode"
+    KEY_CLEAR = "Clear screen"
+    KEY_EOS = "Clear to end of screen"
+    KEY_EOL = "Clear to end of line"
+    KEY_SF = "Scroll 1 line forward"
+    KEY_SR = "Scroll 1 line backward (reverse)"
+    KEY_NPAGE = "Next page"
+    KEY_PPAGE = "Previous page"
+    KEY_STAB = "Set tab"
+    KEY_CTAB = "Clear tab"
+    KEY_CATAB = "Clear all tabs"
+    KEY_SRESET = "Soft (partial) reset (unreliable)"
+    KEY_RESET = "Reset or hard reset (unreliable)"
+    KEY_PRINT = "Print"
+    KEY_LL = "Home down or bottom (lower left)"
+    KEY_A1 = "Upper left of keypad"
+    KEY_A3 = "Upper right of keypad"
+    KEY_B2 = "Center of keypad"
+    KEY_C1 = "Lower left of keypad"
+    KEY_C3 = "Lower right of keypad"
+    KEY_BTAB = "Back tab"
+    KEY_BEG = "Beg (beginning)"
+    KEY_CANCEL = "Cancel"
+    KEY_CLOSE = "Close"
+    KEY_COMMAND = "Cmd (command)"
+    KEY_COPY = "Copy"
+    KEY_CREATE = "Create"
+    KEY_END = "End"
+    KEY_EXIT = "Exit"
+    KEY_FIND = "Find"
+    KEY_HELP = "Help"
+    KEY_MARK = "Mark"
+    KEY_MESSAGE = "Message"
+    KEY_MOVE = "Move"
+    KEY_NEXT = "Next"
+    KEY_OPEN = "Open"
+    KEY_OPTIONS = "Options"
+    KEY_PREVIOUS = "Prev (previous)"
+    KEY_REDO = "Redo"
+    KEY_REFERENCE = "Ref (reference)"
+    KEY_REFRESH = "Refresh"
+    KEY_REPLACE = "Replace"
+    KEY_RESTART = "Restart"
+    KEY_RESUME = "Resume"
+    KEY_SAVE = "Save"
+    KEY_SBEG = "Shifted Beg (beginning)"
+    KEY_SCANCEL = "Shifted Cancel"
+    KEY_SCOMMAND = "Shifted Command"
+    KEY_SCOPY = "Shifted Copy"
+    KEY_SCREATE = "Shifted Create"
+    KEY_SDC = "Shifted Delete char"
+    KEY_SDL = "Shifted Delete line"
+    KEY_SELECT = "Select"
+    KEY_SEND = "Shifted End"
+    KEY_SEOL = "Shifted Clear line"
+    KEY_SEXIT = "Shifted Exit"
+    KEY_SFIND = "Shifted Find"
+    KEY_SHELP = "Shifted Help"
+    KEY_SHOME = "Shifted Home"
+    KEY_SIC = "Shifted Input"
+    KEY_SLEFT = "Shifted Left arrow"
+    KEY_SMESSAGE = "Shifted Message"
+    KEY_SMOVE = "Shifted Move"
+    KEY_SNEXT = "Shifted Next"
+    KEY_SOPTIONS = "Shifted Options"
+    KEY_SPREVIOUS = "Shifted Prev"
+    KEY_SPRINT = "Shifted Print"
+    KEY_SREDO = "Shifted Redo"
+    KEY_SREPLACE = "Shifted Replace"
+    KEY_SRIGHT = "Shifted Right arrow"
+    KEY_SRSUME = "Shifted Resume"
+    KEY_SSAVE = "Shifted Save"
+    KEY_SSUSPEND = "Shifted Suspend"
+    KEY_SUNDO = "Shifted Undo"
+    KEY_SUSPEND = "Suspend"
+    KEY_UNDO = "Undo"
+    KEY_MOUSE = "Mouse event has occurred"
 
     def __eq__(self, other: object) -> bool:
         return str(other) == self.value
@@ -132,6 +217,92 @@ _curses_key_map: Dict[int, str] = {
     curses.KEY_RIGHT: SpecialKeys.RIGHT.value,
     curses.KEY_UP: SpecialKeys.UP.value,
     curses.KEY_DC: SpecialKeys.DELETE.value,
+    curses.KEY_IC: SpecialKeys.INSERT.value,
+    curses.KEY_IC: SpecialKeys.INSERT.value,
+    curses.KEY_HOME: SpecialKeys.HOME.value,
+    curses.KEY_END: SpecialKeys.END.value,
+    curses.KEY_NPAGE: SpecialKeys.PAGE_DOWN.value,
+    curses.KEY_PPAGE: SpecialKeys.PAGE_UP.value,
+    curses.KEY_BREAK: SpecialKeys.KEY_BREAK.value,
+    curses.KEY_DL: SpecialKeys.KEY_DL.value,
+    curses.KEY_IL: SpecialKeys.KEY_IL.value,
+    curses.KEY_EIC: SpecialKeys.KEY_EIC.value,
+    curses.KEY_CLEAR: SpecialKeys.KEY_CLEAR.value,
+    curses.KEY_EOS: SpecialKeys.KEY_EOS.value,
+    curses.KEY_EOL: SpecialKeys.KEY_EOL.value,
+    curses.KEY_SF: SpecialKeys.KEY_SF.value,
+    curses.KEY_SR: SpecialKeys.KEY_SR.value,
+    curses.KEY_NPAGE: SpecialKeys.KEY_NPAGE.value,
+    curses.KEY_PPAGE: SpecialKeys.KEY_PPAGE.value,
+    curses.KEY_STAB: SpecialKeys.KEY_STAB.value,
+    curses.KEY_CTAB: SpecialKeys.KEY_CTAB.value,
+    curses.KEY_CATAB: SpecialKeys.KEY_CATAB.value,
+    curses.KEY_SRESET: SpecialKeys.KEY_SRESET.value,
+    curses.KEY_RESET: SpecialKeys.KEY_RESET.value,
+    curses.KEY_PRINT: SpecialKeys.KEY_PRINT.value,
+    curses.KEY_LL: SpecialKeys.KEY_LL.value,
+    curses.KEY_A1: SpecialKeys.KEY_A1.value,
+    curses.KEY_A3: SpecialKeys.KEY_A3.value,
+    curses.KEY_B2: SpecialKeys.KEY_B2.value,
+    curses.KEY_C1: SpecialKeys.KEY_C1.value,
+    curses.KEY_C3: SpecialKeys.KEY_C3.value,
+    curses.KEY_BTAB: SpecialKeys.KEY_BTAB.value,
+    curses.KEY_BEG: SpecialKeys.KEY_BEG.value,
+    curses.KEY_CANCEL: SpecialKeys.KEY_CANCEL.value,
+    curses.KEY_CLOSE: SpecialKeys.KEY_CLOSE.value,
+    curses.KEY_COMMAND: SpecialKeys.KEY_COMMAND.value,
+    curses.KEY_COPY: SpecialKeys.KEY_COPY.value,
+    curses.KEY_CREATE: SpecialKeys.KEY_CREATE.value,
+    curses.KEY_END: SpecialKeys.KEY_END.value,
+    curses.KEY_EXIT: SpecialKeys.KEY_EXIT.value,
+    curses.KEY_FIND: SpecialKeys.KEY_FIND.value,
+    curses.KEY_HELP: SpecialKeys.KEY_HELP.value,
+    curses.KEY_MARK: SpecialKeys.KEY_MARK.value,
+    curses.KEY_MESSAGE: SpecialKeys.KEY_MESSAGE.value,
+    curses.KEY_MOVE: SpecialKeys.KEY_MOVE.value,
+    curses.KEY_NEXT: SpecialKeys.KEY_NEXT.value,
+    curses.KEY_OPEN: SpecialKeys.KEY_OPEN.value,
+    curses.KEY_OPTIONS: SpecialKeys.KEY_OPTIONS.value,
+    curses.KEY_PREVIOUS: SpecialKeys.KEY_PREVIOUS.value,
+    curses.KEY_REDO: SpecialKeys.KEY_REDO.value,
+    curses.KEY_REFERENCE: SpecialKeys.KEY_REFERENCE.value,
+    curses.KEY_REFRESH: SpecialKeys.KEY_REFRESH.value,
+    curses.KEY_REPLACE: SpecialKeys.KEY_REPLACE.value,
+    curses.KEY_RESTART: SpecialKeys.KEY_RESTART.value,
+    curses.KEY_RESUME: SpecialKeys.KEY_RESUME.value,
+    curses.KEY_SAVE: SpecialKeys.KEY_SAVE.value,
+    curses.KEY_SBEG: SpecialKeys.KEY_SBEG.value,
+    curses.KEY_SCANCEL: SpecialKeys.KEY_SCANCEL.value,
+    curses.KEY_SCOMMAND: SpecialKeys.KEY_SCOMMAND.value,
+    curses.KEY_SCOPY: SpecialKeys.KEY_SCOPY.value,
+    curses.KEY_SCREATE: SpecialKeys.KEY_SCREATE.value,
+    curses.KEY_SDC: SpecialKeys.KEY_SDC.value,
+    curses.KEY_SDL: SpecialKeys.KEY_SDL.value,
+    curses.KEY_SELECT: SpecialKeys.KEY_SELECT.value,
+    curses.KEY_SEND: SpecialKeys.KEY_SEND.value,
+    curses.KEY_SEOL: SpecialKeys.KEY_SEOL.value,
+    curses.KEY_SEXIT: SpecialKeys.KEY_SEXIT.value,
+    curses.KEY_SFIND: SpecialKeys.KEY_SFIND.value,
+    curses.KEY_SHELP: SpecialKeys.KEY_SHELP.value,
+    curses.KEY_SHOME: SpecialKeys.KEY_SHOME.value,
+    curses.KEY_SIC: SpecialKeys.KEY_SIC.value,
+    curses.KEY_SLEFT: SpecialKeys.KEY_SLEFT.value,
+    curses.KEY_SMESSAGE: SpecialKeys.KEY_SMESSAGE.value,
+    curses.KEY_SMOVE: SpecialKeys.KEY_SMOVE.value,
+    curses.KEY_SNEXT: SpecialKeys.KEY_SNEXT.value,
+    curses.KEY_SOPTIONS: SpecialKeys.KEY_SOPTIONS.value,
+    curses.KEY_SPREVIOUS: SpecialKeys.KEY_SPREVIOUS.value,
+    curses.KEY_SPRINT: SpecialKeys.KEY_SPRINT.value,
+    curses.KEY_SREDO: SpecialKeys.KEY_SREDO.value,
+    curses.KEY_SREPLACE: SpecialKeys.KEY_SREPLACE.value,
+    curses.KEY_SRIGHT: SpecialKeys.KEY_SRIGHT.value,
+    curses.KEY_SRSUME: SpecialKeys.KEY_SRSUME.value,
+    curses.KEY_SSAVE: SpecialKeys.KEY_SSAVE.value,
+    curses.KEY_SSUSPEND: SpecialKeys.KEY_SSUSPEND.value,
+    curses.KEY_SUNDO: SpecialKeys.KEY_SUNDO.value,
+    curses.KEY_SUSPEND: SpecialKeys.KEY_SUSPEND.value,
+    curses.KEY_UNDO: SpecialKeys.KEY_UNDO.value,
+    curses.KEY_MOUSE: SpecialKeys.KEY_MOUSE.value,
     ascii.ESC: SpecialKeys.ESCAPE.value,
     **{ord(c): c for c in string.printable},
 }

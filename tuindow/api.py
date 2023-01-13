@@ -49,6 +49,93 @@ __all__ = (
     "LEFT",
     "RIGHT",
     "UP",
+    "ENTER",
+    "TAB",
+    "INSERT",
+    "HOME",
+    "END",
+    "PAGE_UP",
+    "PAGE_DOWN",
+    "KEY_BREAK",
+    "KEY_DL",
+    "KEY_IL",
+    "KEY_EIC",
+    "KEY_CLEAR",
+    "KEY_EOS",
+    "KEY_EOL",
+    "KEY_SF",
+    "KEY_SR",
+    "KEY_NPAGE",
+    "KEY_PPAGE",
+    "KEY_STAB",
+    "KEY_CTAB",
+    "KEY_CATAB",
+    "KEY_SRESET",
+    "KEY_RESET",
+    "KEY_PRINT",
+    "KEY_LL",
+    "KEY_A1",
+    "KEY_A3",
+    "KEY_B2",
+    "KEY_C1",
+    "KEY_C3",
+    "KEY_BTAB",
+    "KEY_BEG",
+    "KEY_CANCEL",
+    "KEY_CLOSE",
+    "KEY_COMMAND",
+    "KEY_COPY",
+    "KEY_CREATE",
+    "KEY_END",
+    "KEY_EXIT",
+    "KEY_FIND",
+    "KEY_HELP",
+    "KEY_MARK",
+    "KEY_MESSAGE",
+    "KEY_MOVE",
+    "KEY_NEXT",
+    "KEY_OPEN",
+    "KEY_OPTIONS",
+    "KEY_PREVIOUS",
+    "KEY_REDO",
+    "KEY_REFERENCE",
+    "KEY_REFRESH",
+    "KEY_REPLACE",
+    "KEY_RESTART",
+    "KEY_RESUME",
+    "KEY_SAVE",
+    "KEY_SBEG",
+    "KEY_SCANCEL",
+    "KEY_SCOMMAND",
+    "KEY_SCOPY",
+    "KEY_SCREATE",
+    "KEY_SDC",
+    "KEY_SDL",
+    "KEY_SELECT",
+    "KEY_SEND",
+    "KEY_SEOL",
+    "KEY_SEXIT",
+    "KEY_SFIND",
+    "KEY_SHELP",
+    "KEY_SHOME",
+    "KEY_SIC",
+    "KEY_SLEFT",
+    "KEY_SMESSAGE",
+    "KEY_SMOVE",
+    "KEY_SNEXT",
+    "KEY_SOPTIONS",
+    "KEY_SPREVIOUS",
+    "KEY_SPRINT",
+    "KEY_SREDO",
+    "KEY_SREPLACE",
+    "KEY_SRIGHT",
+    "KEY_SRSUME",
+    "KEY_SSAVE",
+    "KEY_SSUSPEND",
+    "KEY_SUNDO",
+    "KEY_SUSPEND",
+    "KEY_UNDO",
+    "KEY_MOUSE",
     "AttributeBit",
     "BLINK",
     "BOLD",
@@ -89,6 +176,93 @@ DOWN = _backend.SpecialKeys.DOWN
 LEFT = _backend.SpecialKeys.LEFT
 RIGHT = _backend.SpecialKeys.RIGHT
 UP = _backend.SpecialKeys.UP
+ENTER = _backend.SpecialKeys.ENTER
+TAB = _backend.SpecialKeys.TAB
+INSERT = _backend.SpecialKeys.INSERT
+HOME = _backend.SpecialKeys.HOME
+END = _backend.SpecialKeys.END
+PAGE_UP = _backend.SpecialKeys.PAGE_UP
+PAGE_DOWN = _backend.SpecialKeys.PAGE_DOWN
+KEY_BREAK = _backend.SpecialKeys.KEY_BREAK
+KEY_DL = _backend.SpecialKeys.KEY_DL
+KEY_IL = _backend.SpecialKeys.KEY_IL
+KEY_EIC = _backend.SpecialKeys.KEY_EIC
+KEY_CLEAR = _backend.SpecialKeys.KEY_CLEAR
+KEY_EOS = _backend.SpecialKeys.KEY_EOS
+KEY_EOL = _backend.SpecialKeys.KEY_EOL
+KEY_SF = _backend.SpecialKeys.KEY_SF
+KEY_SR = _backend.SpecialKeys.KEY_SR
+KEY_NPAGE = _backend.SpecialKeys.KEY_NPAGE
+KEY_PPAGE = _backend.SpecialKeys.KEY_PPAGE
+KEY_STAB = _backend.SpecialKeys.KEY_STAB
+KEY_CTAB = _backend.SpecialKeys.KEY_CTAB
+KEY_CATAB = _backend.SpecialKeys.KEY_CATAB
+KEY_SRESET = _backend.SpecialKeys.KEY_SRESET
+KEY_RESET = _backend.SpecialKeys.KEY_RESET
+KEY_PRINT = _backend.SpecialKeys.KEY_PRINT
+KEY_LL = _backend.SpecialKeys.KEY_LL
+KEY_A1 = _backend.SpecialKeys.KEY_A1
+KEY_A3 = _backend.SpecialKeys.KEY_A3
+KEY_B2 = _backend.SpecialKeys.KEY_B2
+KEY_C1 = _backend.SpecialKeys.KEY_C1
+KEY_C3 = _backend.SpecialKeys.KEY_C3
+KEY_BTAB = _backend.SpecialKeys.KEY_BTAB
+KEY_BEG = _backend.SpecialKeys.KEY_BEG
+KEY_CANCEL = _backend.SpecialKeys.KEY_CANCEL
+KEY_CLOSE = _backend.SpecialKeys.KEY_CLOSE
+KEY_COMMAND = _backend.SpecialKeys.KEY_COMMAND
+KEY_COPY = _backend.SpecialKeys.KEY_COPY
+KEY_CREATE = _backend.SpecialKeys.KEY_CREATE
+KEY_END = _backend.SpecialKeys.KEY_END
+KEY_EXIT = _backend.SpecialKeys.KEY_EXIT
+KEY_FIND = _backend.SpecialKeys.KEY_FIND
+KEY_HELP = _backend.SpecialKeys.KEY_HELP
+KEY_MARK = _backend.SpecialKeys.KEY_MARK
+KEY_MESSAGE = _backend.SpecialKeys.KEY_MESSAGE
+KEY_MOVE = _backend.SpecialKeys.KEY_MOVE
+KEY_NEXT = _backend.SpecialKeys.KEY_NEXT
+KEY_OPEN = _backend.SpecialKeys.KEY_OPEN
+KEY_OPTIONS = _backend.SpecialKeys.KEY_OPTIONS
+KEY_PREVIOUS = _backend.SpecialKeys.KEY_PREVIOUS
+KEY_REDO = _backend.SpecialKeys.KEY_REDO
+KEY_REFERENCE = _backend.SpecialKeys.KEY_REFERENCE
+KEY_REFRESH = _backend.SpecialKeys.KEY_REFRESH
+KEY_REPLACE = _backend.SpecialKeys.KEY_REPLACE
+KEY_RESTART = _backend.SpecialKeys.KEY_RESTART
+KEY_RESUME = _backend.SpecialKeys.KEY_RESUME
+KEY_SAVE = _backend.SpecialKeys.KEY_SAVE
+KEY_SBEG = _backend.SpecialKeys.KEY_SBEG
+KEY_SCANCEL = _backend.SpecialKeys.KEY_SCANCEL
+KEY_SCOMMAND = _backend.SpecialKeys.KEY_SCOMMAND
+KEY_SCOPY = _backend.SpecialKeys.KEY_SCOPY
+KEY_SCREATE = _backend.SpecialKeys.KEY_SCREATE
+KEY_SDC = _backend.SpecialKeys.KEY_SDC
+KEY_SDL = _backend.SpecialKeys.KEY_SDL
+KEY_SELECT = _backend.SpecialKeys.KEY_SELECT
+KEY_SEND = _backend.SpecialKeys.KEY_SEND
+KEY_SEOL = _backend.SpecialKeys.KEY_SEOL
+KEY_SEXIT = _backend.SpecialKeys.KEY_SEXIT
+KEY_SFIND = _backend.SpecialKeys.KEY_SFIND
+KEY_SHELP = _backend.SpecialKeys.KEY_SHELP
+KEY_SHOME = _backend.SpecialKeys.KEY_SHOME
+KEY_SIC = _backend.SpecialKeys.KEY_SIC
+KEY_SLEFT = _backend.SpecialKeys.KEY_SLEFT
+KEY_SMESSAGE = _backend.SpecialKeys.KEY_SMESSAGE
+KEY_SMOVE = _backend.SpecialKeys.KEY_SMOVE
+KEY_SNEXT = _backend.SpecialKeys.KEY_SNEXT
+KEY_SOPTIONS = _backend.SpecialKeys.KEY_SOPTIONS
+KEY_SPREVIOUS = _backend.SpecialKeys.KEY_SPREVIOUS
+KEY_SPRINT = _backend.SpecialKeys.KEY_SPRINT
+KEY_SREDO = _backend.SpecialKeys.KEY_SREDO
+KEY_SREPLACE = _backend.SpecialKeys.KEY_SREPLACE
+KEY_SRIGHT = _backend.SpecialKeys.KEY_SRIGHT
+KEY_SRSUME = _backend.SpecialKeys.KEY_SRSUME
+KEY_SSAVE = _backend.SpecialKeys.KEY_SSAVE
+KEY_SSUSPEND = _backend.SpecialKeys.KEY_SSUSPEND
+KEY_SUNDO = _backend.SpecialKeys.KEY_SUNDO
+KEY_SUSPEND = _backend.SpecialKeys.KEY_SUSPEND
+KEY_UNDO = _backend.SpecialKeys.KEY_UNDO
+KEY_MOUSE = _backend.SpecialKeys.KEY_MOUSE
 
 AttributeBit = _backend.AttributeBit
 BLINK = AttributeBit.BLINK
